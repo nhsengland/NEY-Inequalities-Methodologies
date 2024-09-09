@@ -15,3 +15,6 @@ The 'new' Slope Index of Inequality (SII) function can be used to calculate 'new
 
 # Contributing
 To contribute to this repo, please create a new branch and make a pull request with any changes in to the 'Dev' branch. 
+
+# Contact
+For any questions about the contents of the repo, please contact will.manners@nhs.net.
