@@ -1,0 +1,1191 @@
+---
+title: "Inequalities Methodologies"
+author: "North East and Yorkshire Analytics"
+format: 
+  html:
+    toc: true
+    toc-expand: 2
+    embed-resources: true
+    self-contained-math: true
+    page-layout: full
+---
+
+```{r source, message = FALSE, warning = FALSE, echo = FALSE }
+# Load required libraries
+library(dplyr)
+library(tidyr)
+library(plotly)
+library(FunnelPlotR)
+library(readxl)
+library(sf)
+library(leaflet)
+library(tidymodels)
+library(stringr)
+library(fastR2)
+library(this.path) # find where you are
+
+source(file.path(this.dir(), "Functions.r"))
+source(file.path(this.dir(), "DataWrangling.r"))
+```
+
+```{css, message = FALSE, warning = FALSE, echo = FALSE}
+.grey-box {
+background-color: #f0f0f0;
+padding: 10px;
+border-radius: 5px;
+border: 1px solid #ddd;
+}
+```
+
+## Introduction
+
+### Summary
+
+This document has been produced by the NHSE North East and Yorkshire analytics team to assess approaches for measuring and visualising healthcare inequalities by deprivation. By identifying those most appropriate to our work, this document will be an evidence base for how we will apply them to reports and dashboards moving forward.
+
+We have developed in-consultation with national, regional and ICB analytical teams, and in doing so hope that it may facilitate a more joined up approach for how health inequalities are measured and visualised across different teams.
+
+### Document Scope
+
+The following areas are considered to be within the scope of this document:
+
+-   Evaluating approaches for calculating inequalities by deprivation for metrics where this information has been derived from the Lower Layer Super Output Area (LSOA), GP practice or Primary Care Network (PCN) of a patient.
+
+-   Evaluating approaches for effectively communicating this information to a non-technical audience.
+
+-   Outlining other approaches for calculating and visualising inequalities by deprivation.
+
+The following areas are considered outside the scope of this document:
+
+-   Evaluating approaches for calculating and visualising inequalities by factors other than deprivation (e.g. ethnicity).
+
+Also note that unless otherwise stated, this document assumes that approaches for measuring and visualising inequalities will be applied at an ICB-level. Whilst many of the approaches outlined will be suitable for other geographies (e.g. sub-ICBs or local authorities), the smaller size of these geographies may mean extra consideration is given to testing whether differences between groups are statistically significantly different.
+
+### Document Overview
+
+This document has been split into the following sections:
+
+[1. Introduction to Inequalities by Deprivation] - Introduces how deprivation scores are calculated and can be used for healthcare analysis.
+
+[2. Measuring and Calculating Inequalities by Deprivation] - Outlines approaches for measuring inequalities by deprivation and means of calculating these.
+
+[3. Further Methodological Considerations] - Describes key methodological considerations when calculating gradients and indices of inequality.
+
+[4. Visualising Indices of Inequality] - Provides examples of effective means of visualising indicies of inequality.
+
+[5. Further Approaches] - Describes further methods of analysing and visualising inequalities outside of gradients and slope indexes.
+
+### Applying Methodologies and Visualisations
+
+Whilst the primary purpose of this document is to provide an evidence base for approaches we will take as an analytical team, we have looked to enable other teams to apply these to their own work by making all of the underlying code available on [GitHub](https://github.com/NHS-NEY-Analytics/Inequalities-Methodologies).
+
+The DataWrangling.R file reads in all the data used in this report and performs any data manipulation that's required. The Functions.R file contains the functions which are used for all the underlying calculations and visualisations. By downloading these along with the QMD file used to create the document itself, the user can replicate everything contained within here.
+
+Furthermore, it is possible to apply the functions (whether to calculate Slope Index of Inequality values or produce the different visualisations) to other datasets and pieces of work. For example, we are now using all of the functions as part of our [regional inequalities time series report](https://future.nhs.uk/neyanalytics/view?objectID=202025829).
+
+We are looking to provide additional guidance for applying the functions to other datasets and will look to share this as part of the underlying [GitHub repo](https://github.com/NHS-NEY-Analytics/Inequalities-Methodologies). For any questions please contact will.manners\@nhs.net.
+
+## 1. Introduction to Inequalities by Deprivation
+
+::: grey-box
+### Section Summary and Key Messages
+
+-   This section introduces the key building blocks for healthcare analysis by deprivation: Lower Layer Super Output Areas (LSOAs) and the Index of Multiple Deprivation (IMD).
+
+-   It describes how these can be used to segment healthcare metrics by deprivation for larger organisations (such as NHS Regions and Integrated Care Boards), as well as calculating deprivation scores for GP practices.
+
+-   It also summarises the limitations of IMD scores and the potential for analysis which uses them to be misinterpreted, particularly when end users are not familiar with the underlying methodology.
+
+-   For this reason, we will look to ensure analysis we produce by deprivation is appropriately caveated to avoid the risk of incorrect conclusions being drawn.
+:::
+
+### 1a. Lower Layer Super Output Areas (LSOAs)
+
+Lower Layer Super Output Areas (LSOAs) are the building blocks for deprivation-focussed inequalities analysis. LSOAs are small geographies of c.1,500 people (or 650 households). They were primarily designed for the publication of census data, being homogenous in-terms of population size and therefore allowing straightforward comparisons between areas.
+
+It is important to note that LSOAs are not geographies that most people relate to (unlike, for example, electoral wards) -- they tend to cut across neighbourhoods rather than aligning with real communities on the ground. The reason why electoral wards are rarely used for inequalities analysis is their boundaries are subject to regular change, as well as the fact that they vary greatly in size (anything from 1,000 to 30,000 people), making it difficult to directly compare areas.
+
+Note that LSOAs can be aggregated up into larger geographies. These include Middle Layer Super Output Areas (MSOAs), which typically contain 3-4 LSOAs, as well as local authorities, sub-ICBs, ICBs and NHS Commissioning Regions.
+
+### 1b. English Indices of Deprivation
+
+The Index of Multiple Deprivation (IMD) is the official measure of relative deprivation in England. It is an established methodology which encompasses a wide range of an individual's living conditions. People may be seen to live in poverty if they lack the financial resources to meet their needs, whereas people can be regarded as deprived if they lack any kind of resources, not just income.
+
+The IMD is based on 39 separate indicators, organised across seven distinct domains of deprivation which are combined and weighted to calculate the Index of Multiple Deprivation. A breakdown of the seven domains of deprivation and the weightings given to them is provided below.
+
+![](images/num1.png){width="473" fig-alt="Seven domains of deprivation"}
+
+IMD scores are calculated for every LSOA in England. All LSOAs in England are then ranked according to their level of deprivation relative to that of other areas. It is common practice to place LSOAs into deciles (which allows you to identify the 10% most deprived LSOAs nationally) or quintiles (which would identify the 20% most deprived). The 'Core20' component of the [NHS Core20Plus5](https://www.england.nhs.uk/about/equality/equality-hub/national-healthcare-inequalities-improvement-programme/core20plus5/) approach focusses on the 20% most deprived LSOAs nationally.
+
+By aggregating LSOAs up to larger geographies, you can then compare the relative deprivation between different areas. For example, the chart below highlights what percentage of the North East and Yorkshire's population live in each national deprivation decile. If NE&Y had the same population profile as England it would have \~10% of the population living in each decile. However, a disproportionately high number live in LSOAs in the three most deprived deciles nationally (especially the most deprived decile), and a disproportionally small number in LSOAs with low levels of deprivation.
+
+![](images/num2.png){width="470" fig-alt="NEY population in each decile"}
+
+::: callout-note
+## On the chart above, 1 represents the most deprived national decile, and 10 the least deprived
+:::
+
+The NHSE North East and Yorkshire analytics team have used ONS 2022 Mid-Year Population Estimates (published at an LSOA-level) to calculate England, NHS Region, ICB, Local Authority and Sub-ICB populations broken down by age, sex and deprivation. The outputs are available on [GitHub](https://github.com/NHS-NEY-Analytics/2022-Resident-Pops/tree/main).
+
+The maps below visualise the IMD scores for LSOAs in each ICB, with a pale yellow colouring indicating LSOAs in the 20% least deprived areas nationally, and a dark blue colouring LSOAs in the 20% most deprived.
+
+::: panel-tabset
+#### HNY
+
+```{r LSOA IMD HNY, fig.alt="IMD scores for LSOA, HNY", echo = FALSE, warning=FALSE, fig.height= 5, out.width= '100%' }
+
+Chloropleth_Map("NHS Humber and North Yorkshire ICB", lng = -1.0, lat = 54.1, zoom = 8.4)
+```
+
+#### NENC
+
+```{r LSOA IMD NENC, echo = FALSE, warning=FALSE, fig.height= 5, out.width= '100%'}
+
+Chloropleth_Map("NHS North East and North Cumbria ICB", lng = -1.75, lat = 55.0, zoom = 8.4)
+```
+
+#### SY
+
+```{r LSOA IMD SY, echo = FALSE, warning=FALSE, fig.height= 5, out.width= '100%'}
+
+Chloropleth_Map("NHS South Yorkshire ICB", lng = -1.4, lat = 53.5, zoom = 9.5)
+```
+
+#### WY
+
+```{r LSOA IMD WY, echo = FALSE, warning=FALSE, fig.height= 5, out.width= '100%'}
+
+Chloropleth_Map("NHS West Yorkshire ICB", lng = -1.7, lat = 53.9, zoom = 9.4)
+```
+:::
+
+::: callout-note
+## On the map above, LSOAs with a pale yellow shading are in the least deprived national quintile, and those with a dark blue shading in the most deprived
+:::
+
+### 1c. Calculating GP Practice Deprivation Scores
+
+Whilst LSOA deprivation scores can be straightforwardly mapped to larger geographies such as local authorities and sub-ICBs, the same is not true of GP practices. This is because unlike these other geographies, practices do not have defined boundaries. Data published quarterly from [NHS Digital](https://digital.nhs.uk/data-and-information/publications/statistical/patients-registered-at-a-gp-practice) highlights how within a single LSOA, patients will be registered across multiple GP practices.
+
+Whilst this means you cannot straightforwardly assign an LSOA's deprivation score to one individual practice, it is possible to calculate a weighted deprivation score for a practice based on the LSOA breakdown of its registered population.
+
+The table below provides a worked example of how a dummy practice would be assigned a deprivation score based on its LSOA population split. Each LSOA's IMD Score is multiplied by the percentage of the practice population in that LSOA. This ensures that LSOAs that make up a larger percentage of the practice population have a greater weighting. These weighted scores are then summed together to calculate an overall deprivation score for the practice (35.5).
+
+![](images/GP%20IMD%20Example.png){width="681" fig-alt="Table showing how to calculate weighted deprivation score"}
+
+Once you have deprivation scores for every practice in England, it is possible to then place them into national quintiles and deciles (e.g. the 20% most and least deprived practices in England). It is also straightforward to apply this approach to Primary Care Network (PCN) populations and use this to calculate deprivation scores and place PCNs (which are groups of GP practices) into national deciles/quintiles.
+
+GP practice deprivation scores calculated using this approach are available on OHID [Fingertips](https://fingertips.phe.org.uk/profile/general-practice/data#page/6/gid/2000005/pat/204/par/U00070/ati/7/are/H85026/iid/93553/age/1/sex/4/cat/-1/ctp/-1/yrr/1/cid/4/tbm/1/page-options/car-do-0). However, the scores are still based on data from April 2019, so as a regional analytical team we replicate the approach but with the more timely population data published by NHS Digital once a quarter, with the information published on our [FutureNHS page](https://future.nhs.uk/neyanalytics/browseFolder?done=DOCCreated&sm%5fdocs=2&fid=48501200). This ensures that practice deprivation scores account for changes in practice populations since April 2019, as well as practice mergers/closures. We also publish deprivation scores for PCNS.
+
+### 1d. Considerations for Inequalities by Deprivation
+
+Whilst IMD scores are a widely used means of analysing healthcare data, there are several caveats to be aware of when using them, which are listed in the tabsets below.
+
+::: panel-tabset
+#### Timeliness of IMD scores
+
+The most recent English Indices of Deprivation publication is from 2019. The previous version was published in 2015, on which basis we would have expected new scores to have been published in 2023.
+
+This delay in publication means that the scores are increasingly out-dated, and won't reflect changes that have occurred within LSOA populations since 2019.
+
+It is also worth noting that whilst IMD scores are published using the 2011 LSOA configurations, the most recent LSOA populations (2022 mid-year estimates) are based on the more recent configurations used for the 2021 census.
+
+However, an [ONS best fit mapping document](https://geoportal.statistics.gov.uk/datasets/e99a92fb7607495689f2eeeab8108fd6) can be used to map data which uses the 2011 configurations to the more recent ones from 2021. This was used by the North East and Yorkshire analytics team in calculating 2022 populations broken down by age, sex and deprivation, published on [GitHub](https://github.com/NHS-NEY-Analytics/2022-Resident-Pops).
+
+#### Variation within 'most deprived' areas
+
+Whilst placing LSOAs into deprivation deciles or quintiles is a useful methodological tool (e.g. underwriting the 'Core20' concept), it is important to remember that 'Core20' populations may have relatively little in common. For instance, the population in an inner-city LSOA with high levels of ethnic diversity, will have very different health needs and suffer different inequalities compared to a coastal community in a remote sea-side resort.
+
+It is therefore important to remember that deprived areas do not represent a homogeneous group, and further analysis or local intelligence may be needed to understand the specific populations within more deprived areas who experience the largest inequalities.
+
+The NHSE Healthcare Inequalities Improvement Programme have produced a 'Components of Deprivation' tool which provides helpful visualisations in understanding which of the 7 domains of deprivation are doing the most to drive the IMD score for a geography. This is available on their [FutureNHS page](https://future.nhs.uk/InequalitiesImprovement/view?objectId=162735589).
+
+#### Bias towards urban areas
+
+It is generally accepted that IMD scores are weighted towards urban populations, and are less effective at capturing the nature of rural deprivation. For example, one of the indicators included in calculating IMD scores is car ownership, which due to a lack of connectivity and good public transport, is much more of a necessity in rural areas.
+
+Academic articles such as [*Inequalities in rural communities: adapting national deprivation indices for rural settings (2017)*](https://ueaeprints.uea.ac.uk/id/eprint/63354/1/Published_manuscript.pdf) provide further context around this issue.
+
+#### Intersectionality with ethnicity
+
+Non-white populations are disproportionately represented in England's most deprived populations (for instance, see this GOV.UK publication on [*People living in deprived neighbourhoods*](https://www.ethnicity-facts-figures.service.gov.uk/uk-population-by-ethnicity/demographics/people-living-in-deprived-neighbourhoods/latest/)). This intersectionality with ethnicity therefore needs to be considered when presenting differences by deprivation.
+
+For example, in an ICB such as West Yorkshire, a sizeable proportion of the 'Core20' population will be ethnic minority communities living in and around Bradford. Any analysis therefore needs to consider how factors specific to these ethnic groups (for instance, structural racism and discrimination creating barriers to accessing health information and health care services) may be influencing poorer health outcomes, as these won't be captured as part of the IMD calculations.
+
+The Kings Fund have produced a long read on the [*Health of people from ethnic minority groups in England (2023)*](https://www.kingsfund.org.uk/insight-and-analysis/long-reads/health-people-ethnic-minority-groups-england) which provides further context around this area.
+
+#### Patients without a usual place of residence
+
+LSOAs are based on the postcode of the usual place of residence of a patient. This means that a patient with 'no fixed abode' (for example, someone who is homeless) won't be assigned an LSOA, and as such will be excluded from any pieces of analysis. Excluding homeless patients from pieces of analysis is particularly problematic, as this is a group who experience [enormous health inequalities](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5750953/).
+
+#### Double weighting for health
+
+Health is one of the 7 domains of deprivation used as part of IMD calculation, measuring the risk of premature death and the impairment of quality of life through poor physical or mental health.
+
+This means that when using IMD scores for healthcare analysis, we introduce a 'circular logic' and the possibility that a relationship between IMD and markers of health is predicated by the inclusion of health in IMD calculations.
+
+However, the bias created by this appears to be minimal, with the 2023 study [*How important is it to avoid indices of deprivation that include health variables in analyses of health inequalities?*](https://www.sciencedirect.com/science/article/pii/S0033350623002159) concluding that:
+
+> *Although there is a logical problem in using deprivation indices that include health outcomes to rank areas to calculate the scale of health inequalities, the impact of using an alternative subindex containing only data from the income and employment domains is minimal. For population-wide analyses of health inequalities in Scotland, the SIMD does not introduce a substantial bias in the health inequalities summary measures despite substantial movement of small areas between ranked population tenths. Although not examined here, this is likely to be relevant to other similar indices across the United Kingdom.*
+
+#### Masked variation within geographies
+
+IMD scores measure the average deprivation within an area. This means they risk masking variation within a geography, as every person will be given the same deprivation score, even if some parts experience higher levels of deprivation than others.
+
+Even at an LSOA-level, interactive maps such as the [Indices of Deprivation 2019 explorer](http://dclgapps.communities.gov.uk/imd/iod_index.html) highlights how within urban areas a single LSOA will include many streets, and in rural areas an LSOA can cover a large geographic area.
+
+As population sizes increase, it becomes increasingly likely that an average IMD score will mask variation between different parts of a geography, meaning it becomes a cruder measure. This is important to bear in mind when using GP or PCN deprivation scores for pieces of analysis. Whilst the average size of a LSOA is approx. 1,500 people, the average GP Practice has a registered population around 9,000 patients. As collections of GP Practices, PCNs are even larger still.
+
+As a hypothetical example, take a GP practice serving a population evenly split between two areas of very high and low deprivation, with the area of high deprivation performing very poorly for a metric, and the area of low deprivation performing very well. In this case, both the deprivation scores and performance for the metric will average out, meaning the practice will be shown to be mid-ranking for both. This means that the deprived population who suffer poor outcomes will be hidden in the data and won't be visible in any outputs from the analysis.
+
+#### Registered vs Resident Populations
+
+Within NHS analytics, it is commonplace to assign a patient to a geography (e.g. ICB) based on their registered GP practice. This is because GP practice populations, which are published monthly by [NHS Digital](https://digital.nhs.uk/data-and-information/publications/statistical/patients-registered-at-a-gp-practice), form the basis of NHS allocations and how much money ICBs are assigned for commissioning purposes.
+
+However, LSOAs are based on where a patient lives (i.e. their postcode). This can create inconsistencies with other pieces of NHS analysis which use GP registered populations.
+
+For example, take a patient living in an LSOA within the boundary of ICB A, but registered at a GP practice within ICB B. In a typical piece of NHS analysis, they will be assigned to ICB B (based on their registered GP practice). However, for any inequalities piece they will be assigned to ICB A (based on the LSOA where they reside).
+
+It is particularly important to be aware of these differences for any activity rate analysis. To align with how patients are mapped to geographies, for most pieces of NHS analysis the populations used to calculate the rates will be based on GP practice populations.
+
+However, for any inequalities pieces the populations used to calculate rates are likely to be ONS [mid-year population estimates](https://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/populationestimates/bulletins/populationestimatesforenglandandwales/mid2022) (based on expected growths to the population after the 2021 census, and built up from an LSOA level). This is because whilst NHS Digital publish GP Practice populations by LSOA, they do not publish practice populations broken down by LSOA, age and sex.
+
+This means that GP registered populations cannot be used to calculate age-sex standardised rates by deprivation quintile. Age-sex standardisation is a key means by which we can account for how differences in the age and sex profile of populations might be driving variation between them, meaning it is often a crucial component of inequalities analysis (further information on age-sex standardisation can be found in the [APHO Technical Briefing 3](https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&cad=rja&uact=8&ved=2ahUKEwidytntnr-GAxVZRUEAHfCmA8sQFnoECBsQAQ&url=https%3A%2F%2Ffingertips.phe.org.uk%2Fdocuments%2FAPHO%2520Tech%2520Briefing%25203%2520Common%2520PH%2520Stats%2520and%2520CIs.pdf&usg=AOvVaw1vBGATqx3BgC4yLNw4mtkl&opi=89978449)).
+
+If we want to calculate age-sex adjusted activity rates for inequalities analysis, we must therefore use the ONS mid-year population estimates rather than GP registered populations. This is important, as the two data sets provide noticeably different population totals. In June 2022, the England GP registered population was 61,715,466. By contrast, the ONS mid-year population estimate for this same period was 57,106,398.
+
+These differences are understood to primarily be a consequence of over-counting of GP practice populations. This may be caused by delays in removing patients who have died from GP systems, as well as patients who have moved practices being double counted in both. The greatest differences between registered and resident populations occur in urban areas, where patients are more likely to move between practices. For further information, see this [House of Commons Library publication](https://commonslibrary.parliament.uk/population-estimates-gp-registers-why-the-difference/) from 2016.
+
+In any inequalities analysis, it is therefore important to be aware of these methodological differences, and ensure they are communicated to the end-user. For instance, when looking at hospital activity rates it will be important to communicate that the methodology used is different to how the NHS normally analysed rates of admission to hospital.
+:::
+
+### Summary: NHSE NE&Y Approach
+
+As an official and widely used statistic, the NHSE NE&Y analytical team will continue to use IMD scores for deprivation analysis. Our current understanding is new scores will be published in the latter half of 2025, and given the amount of time that would be required to produce a robust alternative methodology which stakeholders are confident in, we do not consider this would be a worthwhile piece of work.
+
+At the same time, it is important to acknowledge the limitations and issues described below, which we will look to consider and communicate in our analysis. For instance:
+
+-   Caveating any analysis based on scores at a GP practice level on how this will represent a cruder approach compared to using LSOAs as a 'base' geography.
+
+-   In cases where a more deprived and also ethnically diverse population is shown to be an outlier, we will highlight the intersectionality between deprivation and ethnicity and look to explore this further in our analysis.
+
+-   In cases when we are calculating activity rates by deprivation, being clear that the underlying populations are different to those which are typically used by pieces of NHS analysis.
+
+## 2. Measuring and Calculating Inequalities by Deprivation
+
+::: grey-box
+### Section Summary and Key Messages
+
+-   This section describes different approaches for using IMD scores to analyse healthcare metrics by deprivation.
+
+-   Comparing the values for those living in the most and least deprived areas via 'dumbbell charts' is identified as being an effective high-level means of visualising inequalities to a non-technical audience.
+
+-   However, the fact this approach either excludes any population outside of the most and least deprived areas, or forces you to create a crude 'non-Core 20' population, means we do not review it as a very robust approach, particularly in instances where a non-linear relationship exists between deprivation and a metric value.
+
+-   To counter these issues, we propose that our standard approach for measuring inequalities will be the 'new' slope index of inequality (SII). This is an 'inclusive' measure, meaning it takes account of variation across an entire population, and aligns with recommendations put forward by the NHSE Healthcare Inequalities Improvement Programme.
+
+-   The SII approach expresses the difference between most and least deprived areas as an absolute difference, and we recognise that in many instances it will be more appropriate to express this as a relative (or percentage) difference via the relative index of inequality (RII).
+
+-   We also identify the absolute gradient of inequality (AGI) as an effective approach of visualising inequalities for metrics published at a GP Practice level, aligning with recommendations put forward by Professor Chris Bentley as part of the priority wards programme.
+
+-   At the same time, we recognise that all these 'inclusive' measures are inherently complex, and that there are other valid approaches for identifying inequalities. For the reasons, we will ensure that any analysis using these approaches will be clearly communicated, and also draw on other approaches for analysing inequalities.
+:::
+
+### 2a. Most vs Least Deprived (Dumbbell Charts)
+
+#### Overview
+
+A common approach for measuring inequalities is looking at the gap between the most and least deprived populations. Typically this is done by comparing the value for the most deprived quintile (i.e. the 'Core20' population) with the least deprived.
+
+An effective means of visualising this information is via 'dumbbell charts', which can be seen in the Health Foundation and Nuffield Trust [Quality and Inequality interactive report](https://www.nuffieldtrust.org.uk/sites/default/files/2020-01/quality_inequality/v2/)
+
+In the NHSE North East and Yorkshire Analytics team, we also include dumbbell charts in several of our reports, with an example chart shown below.
+
+To allow for more informed judgements to be made on the gap between most and least deprived, in our charts a solid dot indicates that there is statistically significant difference between patients in the most and least deprived quintiles, and a hollow dot no statistically significant difference.
+
+This is based on 83.4% confidence intervals (CIs) being calculated for both the most and least deprived values. If there is no overlap between the most and least deprived upper and lower CIs, then they are deemed to be significantly different.
+
+This is based on the approach outlined by [Goldstein and Healy (1995)](https://rss.onlinelibrary.wiley.com/doi/abs/10.2307/2983411), which highlights that assuming there are equal standard errors across two samples, calculating 83.4% confidence intervals and seeing if they overlap acts as an effective proxy for a t-test.
+
+```{r Dumbbell, echo = FALSE}
+
+# Produce dummbell chart using the ICB_Dumbbells_new_834 function 
+ICB_Dumbbells_new_834(DATA, latest_date,
+                      "Dumbbell Chart", "Cholesterol: QRISK 20% or more treated with LLT", "ICB",
+                      AreaName, MetricCategoryName, Population, Value, Numerator, Denominator, TimePeriodName)
+
+#| label: Dumbbell Chart Visualisation
+```
+
+#### Key Considerations
+
+::: panel-tabset
+##### Advantages
+
+1.  The difference between most and least deprived is relatively straightforward to calculate and visualise in an understandable way to a non-technical audience.
+
+2.  If there is a linear relationship between deprivation and a metric value (i.e. as you move from most to least deprived, values increase or decrease by relatively consistent amounts), the gap between most and least deprived will give an accurate representation of the range of values.
+
+##### Disadvantages
+
+1.  Just comparing most and least deprived will exclude approximately 60% of the data (i.e. quintiles 2, 3 and 4). This will be particularly problematic if there is a non-linear relationship between deprivation and a metric value, as the gap between most and least deprived may not be representative of the full range of values.
+
+2.  Furthermore, for monitoring purposes, just focussing on the gap between most and least deprived means any noticeable changes in values for quintiles 2, 3 and 4 won't be communicated to the end-user.
+
+3.  Whilst you could address these issues by comparing the 'Core20' population to the rest of the population (i.e. quintiles 2-5 combined) via a dumbbell chart, this approach is also problematic as the non-Core 20 population will be very diverse, meaning you will potentially be masking a lot of variation by calculating a single combined figure.
+
+4.  Dumbbell charts don't typically display the relative size of the underlying populations. They may be misleading if one group (e.g. the most deprived) is based on a large population, and the other (e.g. least deprived) is based on a small one.
+
+5.  Differences in population size is something to be particularly mindful of when dealing with geographies below an ICB-level, or when aggregating GP practice or PCN data into quintiles. This issue is dealt with in more detail in a document by the NHSE NE&Y analytics team on [*Inequalities Analysis Using Practice and PCN Data*](https://future.nhs.uk/neyanalytics/view?objectID=202023877).
+:::
+
+#### Summary: NHSE NE&Y Approach
+
+We will continue to use dumbbell charts in our analysis, and these provide an effective and easily understandable means of presenting healthcare data by deprivation, particularly for to a non-technical audience who are not used to segmenting metrics by deprivation.
+
+We will also continue to use the Golstein & Healy approach for testing for statistical significance, as these make the approach more statistically robust. For instance, this allows us to account for the fact that smaller populations have greater uncertainty in their underlying values, and so we want to be more cautious when making comparisons to their values.
+
+At the same time, it is important to remember that by excluding quintiles 2, 3 and 4, this is not the most statistically robust means of analysing data by deprivation. We will then look to apply the following checks when presenting data via dumbbell charts:
+
+1.  Checking if there is a linear relationship between deprivation and values for a specific metric. If the values for quintiles 1 and 5 do not represent the full range (i.e. quintiles 2, 3 or 4 have values which are outside this range) then an alternative approach may be needed.
+
+2.  Checking the underlying population sizes of quintiles 1 and 5. These checks will be particularly important for geographies below ICB-level, or when IMD scores are based on practice or PCN data. If one population is much smaller than another, the results on the chart will need to be carefully caveated, even if they include checks for statistical significance.
+
+### 2b. Slope Index of Inequality (SII)
+
+#### Overview
+
+Unlike comparing the most and least deprived, the Slope Index of Inequality is an 'inclusive' measure of inequalities, as it takes account of variation between all areas within a geography.
+
+The chart below has been taken from a 'How to construct Health Inequality Indicator Guide' by the NHSE Healthcare Inequalities Improvement Programme, which is available on their [FutureNHS page](https://future.nhs.uk/InequalitiesImprovement/view?objectId=164231013).
+
+To calculate the SII, a geography (e.g. ICB) has it's population broken down into deprivation deciles/quintiles. The deciles/quintiles are specific to the geography itself, meaning each is roughly equal in size.
+
+Each deprivation decile/quintile is then plotted along the x axis, and their value for a metric along the y axis. The weighted regression line is then calculated (this means that deciles or quintiles with larger populations do more to influence the shape of the line). The difference between the two end points of the line are then calculated, providing us with the SII value.
+
+![](images/SII%20Visualisation.png){width="662" fig-alt="Calculation of Slope Index of Inequality"}
+
+#### Calculating
+
+PHE have produced both an Excel Template and R function for calculating Slope Index of Inequality values. The Excel file is hosted on their [website](https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&cad=rja&uact=8&ved=2ahUKEwiHxbPs37WGAxWhRkEAHQosDDEQFnoECA4QAQ&url=https%3A%2F%2Ffingertips.phe.org.uk%2Fdocuments%2FPHE%2520Slope%2520Index%2520of%2520Inequality%2520Tool%2520(Simulated%2520CIs).xlsm&usg=AOvVaw3gUwwNkmBWZ23QbfRQ7r6o&opi=89978449), and the [phe_sii R function](https://cran.r-project.org/web/packages/PHEindicatormethods/vignettes/WorkedExamples_phe_sii.html) is available as part of the [PHEindicatormethods package](https://cran.r-project.org/web/packages/PHEindicatormethods/PHEindicatormethods.pdf).
+
+#### Key Considerations
+
+For a more technical view on the pros and cons of using the SII, see slide 24 in the NHSE '[How to Guide](https://future.nhs.uk/InequalitiesImprovement/view?objectId=164231013)'.
+
+::: panel-tabset
+##### Advantages
+
+1.  The SII is an 'inclusive' measure, meaning it takes into account variation across all quintiles.
+
+2.  It is an effective means of measuring changes over time for an individual geography.
+
+3.  Having a roughly equal population in each deprivation decile/quintile reduces uncertainty in the calculated SII value.
+
+##### Disadvantages
+
+1.  As the deprivation deciles/quintiles are locally rather than nationally defined, the SII cannot be used to compare different geographies.
+
+2.  Whilst many published healthcare metrics are broken down by deprivation, these are based on national rather than local deciles/quintiles. As such, the SII methodology could not be applied to them.
+:::
+
+#### Summary: NHSE NE&Y Approach
+
+Whilst the SII represents a robust means of measuring changes in inequality within a geography, the fact that it cannot be used to compare inequalities across geographies, and is rarely compatible with published data broken down by deprivation, means it is not an approach we'll use. However, we recognise that it may be the best approach to use when places are looking to monitor changes in inequalities over time.
+
+### 2c. 'New' Slope Index of Inequality (SII)
+
+#### Overview
+
+The methodology for the 'New' Slope Index of Inequality is very similar to the one described in the previous section for the SII. There are only two noticeable differences:
+
+1.  National, rather than local deprivation deciles/quintiles are used. This means that the most deprived quintile equates to people living in the 20% most deprived areas nationally, rather than the 20% most deprived areas in the geography being analysed. Unlike the previous approach, this leads to an unequal population distribution across deciles/quintiles (e.g. if a geography experiences higher levels of deprivation than England, it's most deprived areas will have larger populations than it's least deprived).
+
+2.  The position of deciles/quintiles on the x axis are based on the cumulative national, rather than the local population. In practice, this ensures that as with the SII approach described in the previous section, deciles/quintiles are spaced relatively evenly along the x axis.
+
+The chart below has been taken from a 'How to construct Health Inequality Indicator Guide' by the NHSE Healthcare Inequalities Improvement Programme, which is available on their [FutureNHS page](https://future.nhs.uk/InequalitiesImprovement/view?objectId=164231013).
+
+![](images/New%20SII%20Visualisation.png){width="757" fig-alt="New Calculation of Absolute Gradient of Inequality"}
+
+#### Calculating
+
+Even if data is segmented into national deprivation deciles/quintiles, the PHE Excel tool and R code described in the previous section cannot be used to accurately calculate 'new' SII values. This is because the position of the deciles/quintiles on the x axis is based on the cumulative population in the geography being analysed, rather than England as a whole.
+
+The impact of these differences are highlighted in the charts below. Using the 'old' SII method (i.e. the SII value you'd get using the PHE R function or Excel file), the quintiles are not evenly spaced, as this particular geography has a slightly larger percentage of it's population living in the least deprived areas nationally.
+
+The impact of this is that these larger quintiles will have a two-fold impact on the gradient of the weighted line. Firstly, their larger size means they will have a greater influence than smaller geographies. Secondly, the fact that their position on the x axis is more 'spaced out' from other quintiles, also means they have a greater influence on the gradient of the line.
+
+Using the 'new' SII method, the quintiles are much more evenly spaced out, as their position on the x axis is based on national populations (where a roughly equal population live in each quintile). This means it is only the relative size of these populations within the ICB that will have a noticeable influence on the gradient of the weighted regression line.
+
+::: panel-tabset
+#### Old SII
+
+```{r Quintile_old, echo = FALSE}
+
+# Filter data for the latest time period
+Lat_DATA <- DATA %>% filter(TimePeriodName == latest_date)
+
+# Returns "midpoints", slope & intercept using the 'Old' SII methodology
+old <- Quintiles_old(ICB_Name, Lat_DATA)
+
+# Produce regression plot using the Regression_plot_new function
+Regression_plot_new(DATA, metrics[1], latest_date, ICB_Name, old,
+                    "Slope Index", "Value", #NB No X axis text required as it stands!
+                    AreaName, IndicatorCode, MetricCategoryName, Denominator, Value, NewLow, TimePeriodName)
+#| label: Old SII Visualisation
+```
+
+#### New SII
+
+```{r Quintile_new, echo = FALSE}
+
+# Returns "midpoints", slope & intercept using the 'New' SII methodology
+new <- Quintiles_new_Sii(DATA, metrics[1], latest_date, ICB_Name, National, FALSE, reps = 40,
+                         AreaName_Col = AreaName, MetricName_Col = IndicatorCode, IMD_Col = MetricCategoryName, Population_Col = Denominator, 
+                         Value_Col = Value, Lower_CI_Col = LowerConfidenceLimit, Upper_CI_Col = UpperConfidenceLimit, TimePeriodName_Col = TimePeriodName)
+
+# Produce regression plot using the Regression_plot_new function
+Regression_plot_new(DATA, metrics[1], latest_date, ICB_Name, new,
+                    "Slope Index", "Value", #NB No X axis text required as it stands!
+                    AreaName, IndicatorCode, MetricCategoryName, Denominator, Value, NewLow, TimePeriodName)
+#| label: New SII Visualisation
+```
+:::
+
+As an analytical team we have developed R code for calculating 'new' SII values and 95% confidence intervals, which is available as part of the [underlying GitHub repo](https://github.com/NHS-NEY-Analytics/Inequalities-Methodologies). The national Healthcare Inequalities Improvement Programme also has an Excel tool for calculating 'new' SII values, which can be requested directly from them.
+
+#### Key Considerations
+
+For a more technical view on the pros and cons of using the 'new' SII, see slide 24 in the NHSE '[How to Guide](https://future.nhs.uk/InequalitiesImprovement/view?objectId=164231013)'.
+
+::: panel-tabset
+##### Advantages
+
+1.  Unlike the 'old' SII, the 'new' SII can be used to benchmark against different geographies, whilst still being used to measure changes over time for a single geography.
+
+2.  Unlike the AGI (described in a following section) or 'old' SII, it can also be readily applied to many published datasets where the data is segmented into national deprivation deciles/quintiles.
+
+##### Disadvantages
+
+1.  As with other inclusive measures of deprivation, the complex calculations which underwite the 'new' SII means it needs to be carefully presented to a non-technical audience, otherwise key messages may be misunderstood.
+
+2.  In addition, the fact that each geography's value is influenced by the size of it's population in each quintile (via the weighted regression line) can lead to unintuitive results. For instance, it means that the England value may not represent the midpoint of the underlying geographies. This can be seen on the quadrant chart below, where a much greater number of ICBs are to the right of the England 'new' SII value (shown by the vertical line on the x axis) than are to the left.
+
+```{r Quadrant Chart 1, echo = FALSE}
+
+# Produce quadrant chart using the QuadrantChart_new_labels function
+    QuadrantChart_new_labels(DATA, AllICB_Sii, ICB_Sii, metrics[1], first_date, latest_date, "Persons", "England", 
+                      "Example Quadrant Chart", "ICB Inequalities (SII Value)", "ICB Performance",
+                      "High Performance </br></br>Narrower Inequalities", "High Performance </br></br>Wider Inequalities", "Low Performance </br></br>Narrower Inequalities", "Low Performance </br></br>Wider Inequalities",
+                      Sii, Region_Flag,
+                      AreaName, IndicatorCode, MetricCategoryName, Value, TimePeriodName, NewLow)
+
+```
+
+3.  Another un-intuitive consequence of the weighted regression line is that it could lead to a hypothetical situation where two ICBs have exactly the same values for each quintile, but have different 'new' SII values calculated due to the different weightings given to each of the quintiles. In-practice, however, we would expect any differences in SII values to be small.
+:::
+
+#### Summary: NHSE NE&Y Approach
+
+Of the three 'inclusive' approaches outlined in this section (AGI, SII and 'new' SII), the 'new' SII is the most advantageous for us as a regional analytical team. Unlike the 'old' SII, it can be used to compare inequalities between geographies, and unlike both the 'old' SII and the AGI, can be readily applied to a range of published datasets. As a team, it will therefore be the standard approach we use.
+
+At the same time, it is important to acknowledge the potential drawbacks to this approach, most notably the challenges in communicating it to a non-technical audience. In the 'Visualising Indexes of Inequality' section of this report we will provide examples of how we will look to effectively present 'new' SII values.
+
+### 2d. Relative Index of Inequality (RII)
+
+#### Overview
+
+The approach for calculating the slope index of inequality (whether via the 'old' or 'new' method), can be easily tweaked so the final value is expressed as a relative index of inequality (RII).
+
+When calculating an RII value, the only difference with the slope index approach is the two end points of the line are expressed as a relative rather than absolute difference.
+
+To proivde a worked example of this: by hovering over the interactive chart below, we can see that the two end points of the line are **64.62**, and **53.65**.
+
+The SII would be calculated by measuring the absolute difference between these two numbers (i.e. 53.65 - 64.62), which equates to **-10.97**. The RII would be calculated by expressing 53.65 as a ratio of 64.62 (i.e. 53.65/64.62), which equates to **0.83**.
+
+We could also express this as **83%** (i.e. 53.65 is 83% of 64.62). Or alternatively, we could present the value as **-17%** (i.e. 53.65 is 17% less than 64.62).
+
+```{r Quintile_new_rpt, echo = FALSE}
+
+# Returns "midpoints", slope & intercept using the 'New' SII methodology
+new <- Quintiles_new_Sii(DATA, metrics[1], latest_date, ICB_Name, National, FALSE, reps = 1000,
+                         AreaName_Col = AreaName, MetricName_Col = IndicatorCode, IMD_Col = MetricCategoryName, Population_Col = Denominator, 
+                         Value_Col = Value, Lower_CI_Col = LowerConfidenceLimit, Upper_CI_Col = UpperConfidenceLimit, TimePeriodName_Col = TimePeriodName)
+
+# Produce regression plot using the Regression_plot_new function
+Regression_plot_new(DATA, metrics[1], latest_date, ICB_Name, new,
+                    "Slope Index", "Value",
+                    AreaName, IndicatorCode, MetricCategoryName, Denominator, Value, NewLow, TimePeriodName)
+#| label: SII/RII Visualisation
+```
+
+### 2e. When to use Slope or Relative Index
+
+::: panel-tabset
+##### Advantages of Relative Index
+
+One of the key advantages of the relative index is that compared to the slope index, it allows for easy comparisons across metrics. This is because the difference between the two points on the line are expressed the same format regardless of how the metric is calculated.
+
+To illustrate this, take the hypothetical example below for two CVD metrics. Disease prevalence is expressed as a percentage, whereas emergency admissions to hospital are expressed as a rate per 1,000 population.
+
+The SII value for disease prevalence is 2% (i.e. the absolute gap between 10% and 8%) and for emergency admission rates it is 40 per 1,000 population (i.e. the absolute gap between 80 and 40 per 1,000 population).
+
+By contrast, the RII value for disease prevalence is 1.25 (10 expressed as a ratio of 8) and for emergency admissions it is 2 (80 expressed as a ratio of 40). Unlike the SII, the RII allows us to quickly identify that there are wider inequalities for emergency admissions than disease prevalence, creating lines of inquiry about what might be happening along the care pathway to cause these widening inequalities.
+
+![](images/SII%20and%20RII%20Example.png){width="716" fig-alt="Table comparing slope and relative indices"}
+
+In addition, the relative index may be seen as preferable for metrics where there is wide variation in the underlying values, which we often see with hospital admission rates.
+
+Consider the below hypothetical example, where ICB A has a slope index value which is twice as large as ICB B. However, the relative index value indicates that the ratio between the most and least deprived is the same in both ICBs (1.5).
+
+We can see that ICB A's higher SII value is a consequence of it having much higher underlying activity rates than ICB B (i.e. the SII calculation is 12,000 - 8,000, rather than 6,000 - 4,000). This illustrates how for metrics with wide variation in values, ICBs with higher values will be more likely to show wider inequalities using the SII methodology. If we want to avoid this bias, then the RII would be the more appropriate measure.
+
+Furthermore, for activity rate metrics the RII value may be easier to explain. Stating that the activity rates for the most deprived areas are 50% higher than those of the least deprived, is more easily graspable than saying they are 4,000 per 100,000 population higher for ICB A, or 2,000 per 100,000 population higher for ICB B.
+
+![](images/SII%20and%20RII%20Example%202.png){width="708" fig-alt="Table comparing slope and relative indices"}
+
+##### Advantages of Slope Index
+
+In cases where a metric is expressed as a percentage, it may be argued that the slope index provides a more tangible measure of the difference between most and least deprived.
+
+In the below hypothetical example, we can see two ICBs most and least deprived values for a specific metric. Both ICBs have the same slope index value. ICB B has a slightly larger relative index value as it's underlying values are slightly lower (this is because the same absolute gap becomes larger in percentage terms as the numbers you are comparing get smaller).
+
+In-practice, both approaches tell a similar story. However, the slope index value may be easier to explain, as the underlying calculation is simpler. Or to put it another way, saying that more deprived areas have values which are two percentage points higher than the least deprived in ICB A, is more graspable than saying that the ratio between the two is 1.026, or that there is a 2.6% difference.
+
+![](images/SII%20and%20RII%20Example%203.png){width="735"}
+:::
+
+#### Summary: NHSE NE&Y Approach
+
+There are a variety of factors to consider when deciding on whether to express a value as a slope or relative index. For this reason, we will look to avoid any hard and fast rules on which approach we will take, to make sure we properly account for factors specific to the metric being analysed.
+
+At the same time, we recognise that it will be confusing for stakeholders to see some values expressed as a slope index, and others as a relative index. To ensure consistency, we will then look to follow the below rules of thumb, and only make exceptions when there's a good reason for doing so (for instance, a percentage metric having a wide range of values, creating a much greater likelihood that those with high values will be flagged as having wider inequalities using the SII approach).
+
+**Relative Index**
+
+We will use the relative index when comparing inequalities across multiple metrics, as this approach means that the calculated values will all be expressed in a consistent percentage format.
+
+We will also use the relative index for metrics which are expressed as rates. As discussed previously, we often see wide variation in hospital activity rate metrics, making the RII a more appropriate measure to use. We also believe that expressing differences in rates as a percentage rather than an absolute number will be easier to explain to stakeholders.
+
+**Slope Index**
+
+We will use the slope index for metrics which are expressed as percentages. This is because we have typically seen less variation in values for percentage metrics (e.g. screening uptake or those on the CVDPREVENT Audit), meaning there's less of a bias towards geographies with high values being flagged as having wider inequalities. We also believe that for percentage metrics, it will be easier to explain slope rather than relative index values to stakeholders.
+
+### 2f. Absolute Gradient of Inequality (AGI)
+
+#### Overview
+
+The absolute gradient of inequality is another 'inclusive' method of analysing inequalities by deprivation. Unlike the slope index, however, the AGI does not aggregate data into deprivation deciles/quintiles, but rather uses the individual deprivation scores for small areas within a geography.
+
+The chart below has been taken from a 'How to construct Health Inequality Indicator Guide' by the NHSE Healthcare Inequalities Improvement Programme, which is available on their [FutureNHS page](https://future.nhs.uk/InequalitiesImprovement/view?objectId=164231013).
+
+To calculate the AGI, each small area within a geography (LSOAs on the chart below) has their deprivation score plotted along the x axis, and their value for a metric plotted on the y axis. The weighted regression line is then calculated (unlike a line of best fit, this means that geographies with larger populations do more to influence the gradient of the line). The difference between the two end points of the line are then calculated, providing us with the AGI value.
+
+![](images/AGI%20Visualisation.png){width="744" fig-alt="Calculation of Absolute Gradient of Inequality"}
+
+An effective approach for presenting AGI data can be seen on the NHSE Priority Wards Dashboard, available via [NHS Applications](https://apps.model.nhs.uk/report/PriorityWardsForUnplannedHospitalisations). In this case, the base geography is electoral wards rather than LSOAs. The metric presented is rates of emergency admissions to hospital for Ambulatory Care Sensitive Conditions (ACSCs).
+
+The vertical dotted line on the chart indicates the median IMD Ward IMD score for the selected geography. Wards with higher levels of deprivation than this, and who are above the regression line (i.e. have higher than expected emergency admission rates for ACSCs) are highlighted. These represent 'priority wards', where targeted improvement work would do the most to both reduce overall emergency admission rates, whilst at the same time narrowing inequalities. This approach is advocated by Professor Chris Bentley, and described in more detail in a paper on the Healthcare Inequalities Improvement Programme [FutureNHS page](https://future.nhs.uk/InequalitiesImprovement/view?objectId=98870117).
+
+![](images/Priority%20Wards%20Visualisation.png){width="585" fig-alt="Illustration of priority wards"}
+
+::: callout-note
+## On the chart above, a higher Ward IMD value along the x axis equates to higher levels of deprivation
+:::
+
+#### Calculating AGI Values
+
+The NHS England Healthcare Inequalities Improvement Programme have an Excel file and R code for calculating AGI values (described in more detail in slide 15 and 16 in their '[How to Guide](https://future.nhs.uk/InequalitiesImprovement/view?objectId=164231013)'). Neither the Excel file or R code are hosted, however, meaning they need to be requested directly from the team.
+
+#### Key Considerations
+
+For a more technical view on the pros and cons of using the AGI, see slide 24 in the NHSE '[How to Guide](https://future.nhs.uk/InequalitiesImprovement/view?objectId=164231013)'.
+
+::: panel-tabset
+##### Advantages
+
+1.  The AGI is an 'inclusive' measure, meaning it takes into account variation across all quintiles.
+
+2.  The approach used for the Priority Wards dashboard lends itself to targeted improvement work, as it highlights outlier geographies in areas of high deprivation.
+
+##### Disadvantages
+
+1.  As with other 'inclusive' inequality measures, explaining the AGI to a non-technical audience is challenging.
+
+2.  Many published healthcare metrics are broken down by deprivation deciles/quintiles, but don't provide a view of the data by LSOA or other small geographies. In these instances, whilst it would be possible to calculate 'new' Slope Index of Inequality (SII) values (described previously in this section), it would not be possible to calculate AGI values.
+:::
+
+#### Summary: NHSE NE&Y Approach
+
+As with the slope index methods described previously, the AGI is more robust than comparing the most and least deprived values, as it considers variation across all areas in a geography. But as before, this more robust approach is also more complex, meaning careful thought needs to be given as to how it is communicated to stakeholders.
+
+There are also practical difficulties with applying the AGI to published data, as these rarely contain a breakdown by LSOA. By contrast, it is more common for published statistics to include breakdowns by deprivation deciles/quintiles, in which case the 'new' Slope Index of Inequality approach described previously in this section can be straightforwardly used.
+
+Within the North East and Yorkshire analytics team, we propose to only use the AGI when a metric is published at a GP practice level, and it isn't possible to segment it by deprivation deciles/quintiles based on the LSOA of the patient.
+
+For example, metrics in the [CVDPREVENT Audit](https://www.cvdprevent.nhs.uk/) are published at a GP practice level, but for larger geographies also include breakdowns by deprivation quintile based on the LSOA of a patient.
+
+In this instance, we would measure inequalities using the 'new' Slope Index of Inequality approach outlined previously. We would not calculate AGI values based on GP practice values and deprivation scores, because as described in the [Masked variation within geographies] section, the larger size of GP practices means their IMD scores are a cruder measure than for LSOAs.
+
+However, in cases where LSOA information is not available, applying the AGI approach to GP practices still provides us with a means of measuring inequalities for a metric. In addition, by presenting the data in a similar fashion to the [Priority Wards dashboard](https://apps.model.nhs.uk/report/PriorityWardsForUnplannedHospitalisations), it will then be straightforward to identify GP Practices in areas of high deprivation who are performing poorly for a particular metric. This would not be possible using the 'new' SII approach, which groups practices together into quintiles or deciles.
+
+We have developed R code for visualising AGI values at a GP practice level, with example outputs shown below. We will use this approach as standard when presenting GP practice values for a metric along with their deprivation score. On the charts, the colour of the dots reflects which sub-ICB a GP practice belongs to, and the size of the dot represents their underlying size.
+
+::: panel-tabset
+##### Humber and North Yorkshire
+
+```{r AGI chart HNY, echo = FALSE, warning=FALSE, fig.height= 5, out.width= '100%'}
+
+Wgt_Scatter_plot_AGI_new(GP_Data, "QOQ",
+                         "AGI chart HNY", "rank (higher Value = more deprived)","Value",
+                         AreaName, Denominator, Value, ICB, SubICB, rank)
+```
+
+##### North East and North Cumbria
+
+```{r AGI chart NENC, echo = FALSE, warning=FALSE, fig.height= 5, out.width= '100%'}
+Wgt_Scatter_plot_AGI_new(GP_Data, "QHM",
+                         "AGI chart NENC", "rank (higher Value = more deprived)","Value",
+                         AreaName, Denominator, Value, ICB, SubICB, rank)
+```
+
+##### South Yorkshire
+
+```{r AGI chart SY, echo = FALSE, warning=FALSE, fig.height= 5, out.width= '100%'}
+Wgt_Scatter_plot_AGI_new(GP_Data, "QF7",
+                         "AGI chart SY", "rank (higher Value = more deprived)","Value",
+                         AreaName, Denominator, Value, ICB, SubICB, rank)
+```
+
+##### West Yorkshire
+
+```{r AGI chart WY, echo = FALSE, warning=FALSE, fig.height= 5, out.width= '100%'}
+Wgt_Scatter_plot_AGI_new(GP_Data, "QWO",
+                         "AGI chart WY", "rank (higher Value = more deprived)","Value",
+                         AreaName, Denominator, Value, ICB, SubICB, rank)
+```
+:::
+
+### 2g. General limitations of Gradients/Indexes of Inequality {#general-limitations-of-gradientsindices-of-inequality}
+
+As discussed in this section, gradients or indexes of inequality provide a means by which you can both compare inequalities between geographies, or look at changes in inequality over time. However, it is important to note that by themselves, AGI, SII or RII values do not tell you what's causing these differences or changes over time.
+
+For instance, an increasing SII value for healthy life expectancy would indicate a widening gap between most and least deprived. However, this could be the result of the least deprived doing better and the most deprived staying the same, or the least deprived staying the same and the most deprived doing worse. This is important, as the second scenario would generally be considered to be more concerning than the first.
+
+To illustrate the point of comparing two geographies, consider the below hypothetical example for two ICBs and a metric where a higher value is better. In ICB A, the most deprived value is 60%, and for each quintile the value increases by 4 percentage points, up to 76% for the least deprived quintile. In ICB B, the most deprived value is 56%, and for each quintile the values increase by 2 percentage points, up to 64% for the least deprived quintile.
+
+Using the 'new' SII or RII approach, the inequalities for ICB A would be flagged as being roughly double ICB B. However, patients in the most deprived areas actually do better in ICB A, with their value of 60% being greater than the 56% seen in ICB B.
+
+That ICB A is flagged as having wider inequalities, is because it has a much greater range of values. Whereas the gap between most and least deprived is 8 percentage points in ICB B (56% - 64%), in ICB A it is 16 (60% - 76%).
+
+![](images/ICB%20Example.png){width="326" fig-alt="Comparing two geographies example"}
+
+The SII or RII would therefore allow us to identify that the most deprived patients in ICB A have much lower values than their least deprived counterparts within the ICB. At the same time, they would not flag that the most deprived quintile in ICB B experience the worst outcomes of any group across the two ICBs. This highlights the inherent challenges with healthcare inequalities analysis, and how a single measurement will exclude other valid views of the data.
+
+#### Summary: NHSE NE&Y Approach
+
+Gradients or indices of inequality will be our primary tool for measuring and monitoring inequalities within NE&Y. At the same time, it is important to acknowledge the inherent limitations with these approaches, both in-terms of understanding what's driving changes in values over time, or how they don't allow us to compare populations across geographies.
+
+To account for this, we will implement two separate approaches:
+
+1.  When presenting changes in SII or RII values over time, we will include additional charts highlighting which quintiles are driving these changes. These are described in the '[4d. Quintile Time Series]' part of the next section.
+
+2.  We will also provide additional views of the data which compare specific groups (e.g. the 'Core20' population) across different geographies. These are described in the '[5. Further Approaches]' section of this document.
+
+Whilst recognising that stakeholders often prefer to have a straightforward view of data which provides a 'single version of the truth', we will make the case that any attempts to do this for inequalities analysis risks over-simplifying what is an inherently complex area. Through effective visualisations and accompanying narrative, we will look to make the results of our analysis as understandable as possible.
+
+## 3. Further Methodological Considerations
+
+::: grey-box
+### Section Summary and Key Messages
+
+-   This section describes further methodological considerations to be aware of when using 'inclusive' measures of inequality.
+
+-   Whilst these are more relevant to an analytical audience, and may not always need to be communicated to stakeholders, they are still important to be aware of and taken into consideration for any analysis.
+:::
+
+### 3a. Inverting Deciles/Quintiles
+
+Calculating slope index values involves subtracting or dividing the left hand value on the weighted regression line, by the one on the right hand side.
+
+This approach can create confusion, however, when looking across different metrics. For example, the first chart below looks at high-risk patients who are prescribed statins, where a higher value is considered better (i.e. we want more high-risk patients being prescribed statins to help manage their cholesterol). By contrast, the second chart looks at CVD all-cause mortality, where a lower value will naturally be considered preferable. Both metrics have been sourced from the [CVDPREVENT Audit](https://www.cvdprevent.nhs.uk/).
+
+In both charts, patients from the most deprived areas (on the left-hand side of the x axis) have higher values. As the SII is calculated by subtracting the value on the left-hand side of the regression line from the one on the right, in both instances we end up with negative SII values. For the left-hand chart, subtracting the left hand value (**64.62**) from the right hand one (**53.65**) equates to a value of **-10.97**. For the right-hand chart, subtracting **6,292** from **3,403** equates to a value of **-2,889** (per 100,000 population).
+
+However, if we were presenting these two metrics alongside each other then the fact that both values are negative may create confusion. This is because for the first chart the negative value tells us that the most deprived are doing better for the metric, but on the second a negative value would indicate that they're doing worse.
+
+::: panel-tabset
+##### Humber & North Yorkshire - High risk patients prescribed statins
+
+```{r Quintile_new_4th, echo = FALSE}
+# Returns "midpoints", slope & intercept using the 'New' SII methodology
+new <- Quintiles_new_Sii(DATA, metrics[1], latest_date, ICB_Name, National, FALSE, reps = 40,
+                         AreaName_Col = AreaName, MetricName_Col = IndicatorCode, IMD_Col = MetricCategoryName, Population_Col = Denominator, 
+                         Value_Col = Value, Lower_CI_Col = LowerConfidenceLimit, Upper_CI_Col = UpperConfidenceLimit, TimePeriodName_Col = TimePeriodName)
+
+# Produce regression plot using the Regression_plot_new function
+Regression_plot_new(DATA, metrics[1], latest_date, ICB_Name, new,
+                    "Slope Index", "Value", 
+                    AreaName, IndicatorCode, MetricCategoryName, Denominator, Value, NewLow, TimePeriodName)
+#| label: Higher is Better Visualisation
+```
+
+##### North East and Yorkshire - CVD all-cause mortality
+
+```{r Quintile_mort, echo = FALSE}
+
+# Returns "midpoints", slope & intercept using the 'New' SII methodology
+new <- Quintiles_new_Sii(DATAMORT, "Mort", latest_date, "North East and Yorkshire", National, FALSE, reps = 40,  
+                         AreaName_Col = AreaName, MetricName_Col = IndicatorCode, IMD_Col = MetricCategoryName, Population_Col = Denominator, 
+                         Value_Col = Value, Lower_CI_Col = LowerConfidenceLimit, Upper_CI_Col = UpperConfidenceLimit, TimePeriodName_Col = TimePeriodName) 
+
+# Produce regression plot using the Regression_plot_new function
+Regression_plot_new(DATAMORT, "Mort", latest_date, "North East and Yorkshire", new,
+                    "Slope Index", "Value",
+                    AreaName, IndicatorCode, MetricCategoryName, Denominator, Value, NewLow, TimePeriodName)
+#| label: Lower is Better Visualisation
+```
+:::
+
+#### Summary: NHSE NE&Y Approach
+
+To tackle this issue, we will take the approach that a **positive AGI/SII/RII value, will always equate to inequalities disadvantaging the most deprived.**
+
+In-practice, for the examples above this would mean that for the all-cause mortality calculation, we would 'invert' the quintiles on the x axis (i.e. levels of deprivation increase as we move from left to right) to ensure the value calculated is positive. How this would work in practice is visualised on the chart below.
+
+This approach aligns with the one taken by OHID on their [Inequalities Dashboard](https://analytics.phe.gov.uk/apps/health-inequalities-dashboard/), where a positive SII or RII value always equates to inequalities disadvantaging the most deprived.
+
+For example, for life expectancy metrics (where a higher value is better), SII values are positive, which indicate how many **fewer** years of life expectancy people from more deprived areas experience in relation to the least deprived. For the percentage of adults who are obese, SII values are also positive, which in this instance indicate how much **higher** obesity prevalence is in more deprived areas.
+
+In cases where a metric does not have a clear polarity (i.e. it cannot be said for certain whether a higher or lower value is better) we will present it so a positive value indicates higher values for more deprived areas, and vice versa for negative values. We believe this will be more intuitive to explain, as inequalities metrics are typically presented from the perspective of how more deprived areas are performing.
+
+```{r Quintile_new_flip, echo = FALSE}
+
+# Returns "midpoints", slope & intercept using the 'New' SII methodology. Unlike the previous example, flip is set to 'TRUE' rather than 'FALSE'
+new <- Quintiles_new_Sii(DATAMORT, "Mort", latest_date, "North East and Yorkshire", National, TRUE, reps = 40,
+                         AreaName_Col = AreaName, MetricName_Col = IndicatorCode, IMD_Col = MetricCategoryName, Population_Col = Denominator, 
+                         Value_Col = Value, Lower_CI_Col = LowerConfidenceLimit, Upper_CI_Col = UpperConfidenceLimit, TimePeriodName_Col = TimePeriodName)  # returns "midpoints", slope & intercept
+
+# Produce regression plot using the Regression_plot_new function
+Regression_plot_new(DATAMORT, "Mort",  latest_date, "North East and Yorkshire", new,
+                    "Slope Index", "Value",
+                    AreaName, IndicatorCode, MetricCategoryName, Denominator, Value, NewLow, TimePeriodName)
+```
+
+### 3b. Non-linear relationships
+
+All of the gradient and slope index approaches assume a linear relationship between deprivation and the healthcare metric being analysed (i.e. as you move from high to low deprivation, values undergo a relatively consistent increase or decrease).
+
+As described in articles such as the Scottish Public Health Observatory's [*Measuring Health Inequalities*](https://www.scotpho.org.uk/methods-and-data/measuring-health-inequalities/#:~:text=Both%20approaches%20fit%20a%20regression,value%20for%20the%20whole%20population.), in cases where a non-linear relationship exists, a different method should be used for calculating the weighted regression line. The approach recommended by the Scotland Public Health Observatory is a Poisson-regression, which assumes a non-linear relationship.
+
+#### Summary: NHSE NE&Y Approach
+
+For the time being, the NE&Y analytics team will continue to assume a linear relationship when calculating a gradient or slope index values. However, whenever calculating values we will produce a regression chart (more detail in the [4a. Regression Visualisation]) to understand if a linear relationship exists between a metric value and deprivation. In cases where it doesn't, we will either exclude the metric from our analysis, or make sure it is carefully caveated.
+
+Over time, we will look to produce R code for calculating gradient or slope index values using a Poisson regression. The relative priority of this piece of work will be informed by conversations with stakeholders.
+
+### 3c. Confidence Intervals
+
+It is possible to measure the uncertainty of a gradient/index of inequality value via the confidence intervals for the underlying values. This involves calculating confidence intervals for all of the underlying values (whether individual geographies for the AGI, or deciles/quintiles for the SII or RII).
+
+A 'bootstrapping' simulation method is then used to calculate thousands of AGI/SII/RII values based on the possible range of values within each of the data points. This range of values are then ordered from high to low, and assuming we want to use 95% confidence intervals, the value 2.5% along the distribution is taken as the lower CI, and the value 97.% along the distribution is taken as the upper CI.
+
+Further information on using confidence intervals to measure uncertainty is provided on slides 20 and 29-32 in the NHS England '[How to Guide](https://future.nhs.uk/connect.ti/InequalitiesImprovement/view?objectId=164231013)'. The approach described above is also the one used by OHID in their SII tools.
+
+#### Summary: NHSE NE&Y Approach
+
+When calculating slope or relative index values, we will calculate confidence intervals using the simulation method described above, using 10,000 repetitions as standard. Moving forward, we will look to make greater use of these on our charts to highlight the uncertainty in the underlying values.
+
+### 3d. Regression lines generating impossible values
+
+There is a risk that regression lines generate impossible values, which are then used to calculate AGI/SII/RII values
+
+This can be seen in the below example, where the most deprived end of the regression line is at 92.97%, and the most deprived at 102.33%. This leads to a calculated SII value of 9.37%. However, this may be seen to represent an artificially wide gap between most and least deprived, as the maximum possible value for the metric is 100%.
+
+In this instance, a more appropriate SII calculation may be seen to be 100% - 92.97%, which gives an SII value of 7.03%. Given the distribution of the data and the fact that 4 quintiles have values of 100%, however, there is also a broader question about how much value is added by calculating an SII value.
+
+```{r Quintile_HNY_Smok, echo = FALSE}
+# Returns "midpoints", slope & intercept using the 'New' SII methodology.
+new <- Quintiles_new_Sii(SMOK_HNY, "Smoking", latest_date, "Humber and North Yorkshire", "England", FALSE, reps = 40,                                  AreaName_Col = AreaName, MetricName_Col = IndicatorCode, IMD_Col = MetricCategoryName, Population_Col = Denominator, 
+                         Value_Col = Value, TimePeriodName_Col = TimePeriodName)  
+
+# Produce regression plot using the Regression_plot_new function
+Regression_plot_new(SMOK_HNY, "Smoking", latest_date, "Humber and North Yorkshire", new,
+                    "Slope Index", "Value",
+                    AreaName, IndicatorCode, MetricCategoryName, Denominator, Value, NewLow, TimePeriodName)
+```
+
+#### Summary: NHSE NE&Y Approach
+
+In instances when a AGI/SII/RII regression line crosses the 0 or 100% axis, we will base the underlying calculation on either the 0 or 100% value, rather than the end point of the line. This is in the interests of calculating a value which more accurately reflects the gap between most and least deprived, and is easier to explain to stakeholders.
+
+Whilst we currently do not have capacity to develop the above chart to reflect this change (i.e. making the line horizontal at the point it reaches 100%), we will look to update the automated narrative to flag when the regression line crosses the 0 or 100% axis.
+
+## 4. Visualising Indices of Inequality
+
+::: grey-box
+### Section Summary and Key Messages
+
+-   As described previously, 'inclusive' measures of inequality are inherently complex, and therefore need to be carefully presented to a non-technical audience to ensure that key messages are understood.
+
+-   This section introduces charts which we'll look to include as standard when presenting metrics analysed using inclusive measures of inequality, and automated narrative that will sit alongside them.
+
+-   In-particular, we will look to use regression visualisation charts to highlight how SII or RII values have been calculated for a geography, and quadrant charts to bring together inequalities and performance data into a single view.
+
+-   We will also include time series charts as standard to show whether inequalities are narrowing or widening over time, along with accompanying narrative to help end users interpret changes in time series data.
+
+-   All of the R code used to produce these charts is available in the functions folder within the underlying [GitHub repository](https://github.com/NHS-NEY-Analytics/Inequalities-Methodologies). Code for producing the automated narrative can be found in the Quarto file.
+:::
+
+### 4a. Regression Visualisation
+
+The below chart provides a visualisation of how SII values have been calculated for a specific geography, along with some automated narrative to explain the chart to a non-technical audience.
+
+#### **Summary: NHSE NE&Y Approach**
+
+Moving forward, whenever presenting SII or RII values, we will always accompany these with charts in the style of the below to help end users understand how the values have been calculated.
+
+These will be included for every geography we are presenting SII or RII values for. In cases where we are presenting these as a time series, we will just produce these charts and narrative for the most recent time period.
+
+This aligns with the 'Slope index of inequality regression' view that OHID provide for certain metrics on their [Health Inequalities Dashboard](https://analytics.phe.gov.uk/apps/health-inequalities-dashboard/).
+
+We have included 95% confidence intervals to help highlight the uncertainty in the underlying decile/quintile values, which will in-turn inform the confidence intervals calculated for the overall SII/RII value (see the [3c. Confidence Intervals] part of the previous section).
+
+We will also use the below automated narrative and standard when presenting the charts:
+
+**Standard Automated Narrative:**
+
+```{r Quintile_new_rpt_again, results='asis', echo = FALSE}
+
+Flip <- FALSE # Used as part of the automated narrative
+
+# This section of the code returns "midpoints", slope & intercept which are used as part of the automated narrative and in creating the outputted chart underneath this
+new <- Quintiles_new_Sii(DATA, metrics[1], latest_date, ICB_Name, National, FALSE, reps = 40, 
+                         AreaName_Col = AreaName, MetricName_Col = IndicatorCode, IMD_Col = MetricCategoryName, Population_Col = Denominator, 
+                         Value_Col = Value, Lower_CI_Col = LowerConfidenceLimit, Upper_CI_Col = UpperConfidenceLimit, TimePeriodName_Col = TimePeriodName)
+
+# Start of Automated Narrative
+cat("The chart below visualises how the slope index of inequality (SII) value has been calculated for<strong>",
+    ICB_Name,
+    "</strong>ICB for this metric. \n \n")
+
+cat("The SII is a measure of how the value for this metric varies with deprivation. It takes account of health inequalities across the whole range of deprivation within each area and summarises this in a single number.  \n \n")
+
+cat("On the chart below, the SII is calculated by plotting deprivation quintiles or deciles along the x axis, and their values on the y axis.  The <strong>most deprived</strong> areas are plotted on the",
+    ifelse(Flip,
+           {
+            "<strong>right-hand</strong> end of x axis, and the <strong>least deprived</strong> 
+             on the <strong>left-hand</strong> end. \n \n"
+             },
+             {
+             "<strong>left-hand</strong> end of x axis, and the <strong>least deprived</strong> 
+               on the <strong>right-hand</strong> end. \n \n"
+             }
+    ) )
+
+cat("The size of the dots represents the relative size of the population in each quintile or decile. Those with larger populations (i.e. bigger dots) will do more to determine the gradient of the weighted regression line.  \n \n")
+
+cat("The spacing of the dots along the x axis reflects the percentage of the national population in each quintile or decile. In-practice, this means that they are evenly spaced. \n \n")
+
+cat("The SII is calculated by subtracting the value at the left-hand end of the regression line  <strong>(",
+    round(new[6], digits = 2), 
+    "%)</strong> from the one at the right-hand end <strong>(",
+    round(new[6] + new[7], digits = 2),
+    "%)</strong>. This leads to a calculated SII value of <strong>",
+    round(new[7], digits = 2),
+    "%</strong>. \n \n", sep="")
+
+cat("This figure represents the social gradient from most to least deprived for the metric. The fact that the SII value is",
+    ifelse(new[7]>0,
+           {
+             "<strong>positive</strong> tells us how much <strong>higher</strong>"
+           },
+           {
+             "<strong>negative</strong> tells us how much <strong>higher</strong>"
+           }
+    ),
+    "the most deprived values are relative to the least deprived. \n \n")
+
+cat("For each deprivation decile or quintile, the vertical grey bars represent 95% confidence intervals. These represent the uncertainity in the underlying values. Smaller populations, which are more likely to have their values influenced by random variation, will have wider confidence intervals. The uncertainity in each of these data points will the inform the confidence intervals calculated for the overall SII or RII value. \n \n")
+
+cat("For further information on Slope Index of Inequality values and why we have chosen to use this methodology for analysing inequalities, please see the [methodology document](https://github.com/NHS-NEY-Analytics/Inequalities-Methodologies) produced by the North East and Yorkshire analytics team. \n \n")
+
+# Produce outputted regression plot
+Regression_plot_new(DATA, metrics[1], latest_date, ICB_Name, new,
+                    "Slope Index Regression Visualisation", "Value",
+                    AreaName, IndicatorCode, MetricCategoryName, Denominator, Value, NewLow, TimePeriodName)
+#| label: SII Visualisation along with explanatory text
+```
+
+### 4b. Variation across Geographies
+
+To show the spread of AGI/SII/RII values across geographies, an effective visualisation is a bar chart with 95% confidence intervals to show the relative spread of values.
+
+#### Summary: NHSE NE&Y Approach
+
+When looking to show the spread of AGI/SII/RII values across multiple geographies for a single time point, we will use bar charts in the format of the below (values shown are calculated via the SII).
+
+To help end-users understand what's driving an ICB's position on the bar chart, we will also look to include charts shown in the '[5. Further Approaches]' section which compare specific deprivation quintiles. For instance, if an ICB has wide inequalities, these will help the end-user understand if this is a consequence of more deprived areas having low values, less deprived having high, or a combination of the two.
+
+To aid interpretation of the charts, we will include the following narrative as standard, which will include a link to this document.
+
+**Standard Automated Narrative:**
+
+```{r Sii Bar, results = 'asis', echo = FALSE}
+
+cat("The below chart provides a view of inequalities across geographies using the 'new' Slope Index of Inequality (SII). \n \n")
+
+cat("The SII may be simply understood as quantifying the difference between people who live in more and less deprived areas. \n \n")
+
+cat("For the most recent time period, the majority of SII values on the chart are negative. \n \n")
+
+cat("Negative SII values mean that patients from", 
+    ifelse(Flip,
+           {
+            "<strong>more deprived areas have higher values for the metric.</strong> Positive values would mean that patients from <strong>less deprived areas have higher values</strong>. \n \n"
+           },
+           {
+            "<strong>less deprived areas have higher values for the metric.</strong> Positive values would mean that patients from <strong>more deprived areas have higher values</strong>. \n \n"
+             }
+    ) )
+
+cat("The SII approximates the gap between most and least deprived. For example, an SII value of 10% would indicate that the most deprived values are approximately 10 percentage points",
+    ifelse(Flip, 
+           {"<strong>higher</strong>"}, {"<strong>lower</strong>"}
+           ),
+    "than the least deprived for this particular metric. An SII value of -10% would indicate that the most deprived values are approximately 10 percentage points", 
+    ifelse(Flip, 
+           {"<strong>lower</strong>"}, {"<strong>higher</strong>"}
+           ),
+    "for the metric shown below. \n \n")
+
+cat("For each geography, the vertical grey lines represent 95% confidence intervals. These show us the uncertainity in the SII values. The size of the confidence intervals should be considered before drawing conclusions from the data. For example, if they cross the 0% line on the chart, then we cannot say with statistical certainity that more or less deprived areas have higher values for the metric. \n \n")
+
+cat("For further information on Slope Index of Inequality values and why we have chosen to use this methodology for analysing inequalities, please see the [methodology document](https://github.com/NHS-NEY-Analytics/Inequalities-Methodologies) produced by the North East and Yorkshire analytics team. \n \n")
+
+# Remove England data so it's not plotted as a line in the bar chart
+XAllICB_Sii <- AllICB_Sii %>% filter(AreaName != "England") 
+
+# Produce a chart using the SiiBar_new function
+SiiBar_new(XAllICB_Sii, 
+           "SII National Distribution Chart", "ICB", "Sii",
+           AreaName, Sii, lower, Region_Flag)
+```
+
+### 4c. Time Series
+
+The time series chart below provides a view of changes in SII values over time for England and NE&Y ICBs. By clicking on the legend underneath the chart, the user has the option of adding or removing geographies from the visualisation.
+
+Narrative is also included to aid interpretation of the chart.
+
+#### **Summary: NHSE NE&Y Approach**
+
+Moving forward, we will use charts and narrative in the style of the below to present changes in SII or RII values over time.
+
+We will accompany these with charts showing changes in quintile values (as shown in the [4d. Quintile Time Series] section) for each geography to highlight what's driving changes in SII or RII values. For instance, if an ICB has widening inequalities, these will help the end-user understand if this is a consequence of deteriorating values for more deprived areas, improving values for less deprived, or a combination of the two.
+
+We will also explore adding confidence limits onto the charts to highlight uncertainty in the underlying data. The standard automated narrative we will use is shown below:
+
+**Standard Automated Narrative:**
+
+```{r Sii TS, results='asis', echo = FALSE}
+
+# Calculate values used as part of automated narrative
+SignTest <- ICB_Sii %>% filter(TimePeriodName == latest_date, !AreaName == "England")
+Flag <- ifelse(min(SignTest$Sii) > 0, "Positive", ifelse(max(SignTest$Sii) < 0, "Negative", "Both"))
+SignTest$absval <- abs(SignTest$Sii)
+Sii_min <- SignTest %>% filter(absval == min(absval))
+Sii_max <- SignTest %>% filter(absval == max(absval))
+
+# Write summary text
+cat("The below chart provides a time series view of inequalities data using the Slope Index of Inequality (SII). \n \n")
+
+cat("The SII may be simply understood as quantifying the difference between people who live in more and less deprived areas. \n \n ")
+
+cat("For the most recent time period, ICB and England SII values are <strong>",
+  ifelse(Flag == "Positive",
+    {
+      "positive"
+    },
+    ifelse(Flag == "Negative",
+      {
+        "negative"
+      },
+      {
+        "a combination of positive and negative"
+      }
+    )
+  ), ".</strong> \n \n",
+  sep = ""
+)
+
+cat(ifelse(Flag == "Positive",
+  {
+    "Positive SII values mean that patients from <strong>more deprived areas have lower values for the metric</strong>: \n
+• If a line is travelling upwards on the graph, it means that the gap between the most and least deprived is widening (moving away from zero).\n
+• If a line is travelling downwards on the graph, it means that the that gap between the most and least deprived is narrowing (moving towards zero). \n"
+  },
+  ifelse(Flag == "Negative",
+    {
+      "Negative SII values mean that patients from <strong>more deprived areas have higher values for the metric</strong>: \n
+• If a line is travelling downwards on the graph, it means that the that gap between the most and least deprived is widening (moving away from zero). \n
+• If a line is travelling upwards on the graph, it means that the gap between the most and least deprived is narrowing (moving towards zero). \n"
+    },
+    {
+      "In cases where ICBs have <strong>positive</strong> SII values on the chart, this means that patients from <strong>more deprived areas have lower values for the metric</strong>: \n
+• For positive SII values, if a line is travelling upwards on the graph, it means that the gap between the most and least deprived is widening (moving away from zero). \n
+• For positive SII values, if a line is travelling downwards on the graph, it means that the that gap between the most and least deprived is narrowing (moving towards zero). \n
+In cases where ICBs have <strong>negative</strong> SII values on the chart, this means that patients from <strong>more deprived areas have higher values for the metric</strong>: \n
+• For negative SII values, if a line is travelling downwards on the graph, it means that the that gap between the most and least deprived is widening (moving away from zero). \n
+• For negative SII values, if a line is travelling upwards on the graph, it means that the gap between the most and least deprived is narrowing (moving towards zero). \n"
+    }
+  )
+), "\n \n", sep = "")
+
+cat("For the most recent time period, <strong>", Sii_max$AreaName, "</strong> has the widest gap between most and least deprived, with an SII value of <strong>", paste0(round(Sii_max$Sii, digits = 1), "%."), Sii_min$AreaName, "</strong> has the smallest gap between most and least deprived, with an SII value of <strong>", paste0(round(Sii_min$Sii, digits = 1), "%."), "</strong> \n \n")
+
+cat("For further information on Slope Index of Inequality values and why we have chosen to use this methodology for analysing inequalities, please see the [methodology document](https://github.com/NHS-NEY-Analytics/Inequalities-Methodologies) produced by the North East and Yorkshire analytics team. \n \n")
+
+#  Produce outputted chart using the SiiTimeSeries_new function
+SiiTimeSeries_new(ICB_Sii, metrics[1],
+                  "SII Time Series CHart", "Time Period", "SII",
+                  IndicatorCode, AreaName, TimePeriodName, Sii)
+
+```
+
+### 4d. Quintile Time Series
+
+The chart below provides a quintile time series visualisation for North East and Yorkshire ICBs for the metric shown on the previous time series chart.
+
+Quintiles 2-4 aren't initially shown, but these can be added in by clicking on the legend to the right of the chart.
+
+In the case of Humber and North Yorkshire, this highlights that the decreasing gap between most and least deprived shown on the time series chart, is a consequence of improving values for less deprived areas, and the most deprived value remaining fairly static.
+
+#### **Summary: NHSE NE&Y Approach**
+
+We will accompany all SII/RII time series charts with quintile time series in the style of the below to help the end-user understanding what's driving changing values over time.
+
+```{r Quintile chart, echo = FALSE}
+
+# Produce chart for 4 ICBs. "Areas" appears in the DataWrangling file, and includes England along the 4 NEY ICBs.
+QuintileChart_4new(DATA, metrics[1], areas, "Persons",
+                  "IMD Quintile Time Series Chart", "Date", "Value",
+                  AreaName, IndicatorCode, MetricCategoryName, Value, TimePeriodName)
+#| label: Quintile time series visualisation with explanatory text
+```
+
+### 4e. Quadrant Chart
+
+The quadrant chart below shows how overall and SII values can be combined into a single visualisation.
+
+ICB SII values are plotted along the x-axis. The England SII value is represented by the vertical black line. ICB overall values for the metric are then plotted along the y-axis, with the England value represented by the horizontal black line.
+
+The England lines create four 'quadrants' on the chart, which allows us to categorise each ICB in relation to England. For instance, those in the top-left hand box have a wider most-least deprived gap than England, and also higher overall values.
+
+On the chart, the pale dots represent historic values from earlier time points for each of our ICBs. The purpose of these is to show the general direction of travel in-terms of both inequalities and overall values. In the chart below, this highlights that compared to 9 months ago, ICB values have increased slightly, whilst the gap between most and least deprived has slightly narrowed.
+
+#### **Summary: NHSE NE&Y Approach**
+
+We have received positive feedback from stakeholders on quadrant charts in existing reports (for instance, our [Time Series Analysis](https://future.nhs.uk/neyanalytics/view?objectID=202025829) of Key Metrics) and will continue to use these as a key visualisation moving forward.
+
+As part of this project, we have developed the visualisation so each of the most recent NE&Y values include confidence intervals which reflect uncertainty in the underlying SII and overall values. These highlight that due to the nature of the SII calculations, there is much more uncertainty around these values compared to the overall ones.
+
+We will also use the below narrative to help explain the charts to end users:
+
+**Standard Narrative:**
+
+The quadrant chart below brings together overall and SII ICB values into a single visualisation.
+
+ICB SII values are plotted along the x-axis. The England SII value is represented by the vertical black line. ICB overall values for the metric are then plotted along the y-axis, with the England value represented by the horizontal black line.
+
+The England lines create four 'quadrants' on the chart, which categorise each ICB in relation to England. Each category is shown via labels in the respective quadrants.
+
+On the chart, the pale dots represent historic values from earlier time points for each ICB in North East and Yorkshire. The purpose of these is to show the general direction of travel in-terms of both inequalities and overall values.
+
+For the most recent values for NE&Y ICBs, the grey lines represent 95% confidence intervals. These show us the uncertainity in both the SII and overall values. The size of the confidence intervals should be considered before drawing conclusions from the data. For example, if the SII confidence limits cross the vertical England line, then we cannot say with statistical certainty that an ICB's SII value is higher or lower than England.
+
+Note that due to the nature of SII calculations, which consider variation across all deprivation deciles or quintiles, there is greater uncertainty in these values, which are reflected in their wider confidence limits.
+
+For further information on Slope Index of Inequality values and why we have chosen to use this methodology for analysing inequalities, please see the [methodology document](https://github.com/NHS-NEY-Analytics/Inequalities-Methodologies) produced by the North East and Yorkshire analytics team.
+
+```{r Quadrant Chart 2, echo = FALSE}
+
+# Use QuadrantChart_new_labels function to create the Quadrant Chart
+    QuadrantChart_new_labels(DATA, AllICB_Sii, ICB_Sii, metrics[1], first_date, latest_date, "Persons", "England", 
+                      "Example Quadrant Chart", "ICB Inequalities (SII Value)", "ICB Performance",
+                      "High Performance </br></br>Narrower Inequalities", "High Performance </br></br>Wider Inequalities", "Low Performance </br></br>Narrower Inequalities", "Low Performance </br></br>Wider Inequalities",
+                      Sii, Region_Flag,
+                      AreaName, IndicatorCode, MetricCategoryName, Value, TimePeriodName, NewLow)
+
+```
+
+## 5. Further Approaches
+
+::: grey-box
+### Section Summary and Key Messages
+
+-   As described in the '[General limitations of Gradients/Indices of Inequality](#general-limitations-of-gradientsindices-of-inequality)' section, an issue with these approaches is they do not allow you to compare populations (e.g. the 'Core20') across multiple geographies.
+
+-   The approaches outlined in this section can be used to provide this alternative view of inequalities data, showing variation in the values for a specific population across different organisations.
+
+-   We do not propose to always use the charts in this section within our analysis. We recognise that inequalities analysis is inherently complex, and in many cases the most appropriate approach will be to provide a simple take home message via a gradient/index value.
+
+-   However, under the right circumstances the charts in this section can be used to provide valuable additional insights.
+
+-   All of the R code used to produce these charts is available in the functions folder within the underlying [GitHub repository](https://github.com/NHS-NEY-Analytics/Inequalities-Methodologies). Code for producing the automated narrative can be found in the Quarto file.
+:::
+
+### 5a. Funnel Plots
+
+As outlined in academic papers such as David Spieglehalter's [*Funnel plots for comparing institutional performance*](https://onlinelibrary.wiley.com/doi/10.1002/sim.1970) (full article can be accessed by emailing the North East and Yorkshire analytics team), funnel plots provide an effective tool for comparing organisational values for a metric.
+
+The example provided below is for the 'Core20' population for the CVDPREVENT metric CVDPCHOL003 (high-risk patients being prescribed statins). The funnel plot has been produced using Chris Mainey's [FunnelPlotR](https://github.com/nhs-r-community/FunnelPlotR) package, which follows methodologies outlined in the Spiegelhalter paper linked to above.
+
+The funnel plot shows all ICBs nationally, with those in North East and Yorkshire highlighted. The 'Core20' population for each ICB (which acts as the denominator for the metric) is plotted along the x-axis. The fact that the North East and Yorkshire ICBs are towards the right-hand end of the axis, is reflective of the fact that they are relatively large ICBs where a high percentage of the population lives in the 20% most deprived areas nationally.
+
+ICB values are plotted on the y-axis. On the chart, we can also see dotted purple and green lines. These represent 'control limits' for the metric. These are used to help the end-user identify 'special cause variation'. ICBs within the control limits may be seen to have their values explained by 'common cause variation', or random fluctuations in the data. This means we cannot say with statistical confidence that their values either represent a cause for concern or good practice.
+
+On the chart, the control limits have been adjusted for 'over dispersion'. These adjustments are required as the underlying data does not follow a normal distribution - further information on over-dispersion and adjustment methodologies can be found in section 5 of the Spiegelhalter paper.
+
+ICBs outside the control limits may be deemed to be statistical outliers, whose position on the chart warrants further investigation. We can be especially confident in the outlier status of those outside the green control limits (equating to three standard deviations from the mean).
+
+Whilst on the chart below no NE&Y ICBs are identified as outliers, it still provides reassurance that 3 of the 4 ICBs are above the England value (shown by the horizontal grey dotted line in the centre of the chart) for their Core20 populations, with South Yorkshire performing particularly well.
+
+#### **Summary: NHSE NE&Y Approach**
+
+As a robust statistical approach, we will look to incorporate funnel plots into our reports to provide a view of how populations in North East and Yorkshire ICBs compare to others nationally.
+
+Unlike the gradient and index approaches, comparing to other ICBs nationally also lends itself to analysis by ethnicity. For instance, you can compare the values for Asian or Asian British patients for all ICBs nationally, which would allow you to identify any ICBs with significantly high or low values for this population.
+
+The FunnelPlotR package is set up for calculating funnel plots for metrics expressed as percentages or via indirectly standardised ratios (ISRs). ISRs give you a single value which compares an expected number (e.g. admissions to hospital) versus the actual number for a geography. Expected numbers are calculated by applying England values (e.g. hospital admission rates for each age-sex band) to a local population.
+
+As an analytical team, for metrics expressed as rates (for instance, admissions to hospital), we will explore calculating the values as ISRs before plotting them on funnel plots.
+
+```{r Funnel, echo = FALSE}
+
+funnel_details <- Funnel()
+
+funnel_details$plot
+
+#| label: Example Funnel Plot
+```
+
+### 5b. Benchmarking
+
+In addition to funnel plots, another approach of comparing values for a population is by 'benchmarking' against a single value. Typically, this takes the form of comparing values for a specific population (e.g. the Core20 population) against the England equivalent value.
+
+An advantage for this approach is it allows you to compare multiple populations on a single visualisation. It is not possible to do this via a funnel plot, which only allows you to present one population at a time per metric.
+
+The chart below is provides an example of how a former CCG's value for a metric (rates of unplanned hospitalisations for ambulatory care sensitive conditions) compare to England for different age bands. The chart is taken from an NHS RightCare [Equality and Health Inequalities Pack](https://www.england.nhs.uk/wp-content/uploads/2018/12/ehircp-l-barking_and_dagenham-ccg-dec18.pdf), published in December 2018.
+
+For each age band, the CCG's value is compared to England (shown by the grey bar). In cases where the CCG's value is significantly higher than England (determined via the 95% confidence intervals), it is shaded in red. In cases where it is significantly lower it is shaded in green. In cases where it is not significantly different (i.e. it's 95% confidence intervals overlap with the England values) it is shaded in orange. This allows the user to quickly identify the age groups where it's rates of admissions are significantly higher than England.
+
+In addition, the chart also includes a 'saving opportunity' for each age-band, which quantify the reduction in hospital admissions that would occur if the CCG reduced it's activity rates to be in-line with England. For example, for those aged 80 to 84, if the CCG moved to be-line with England this would see a reduction of 9 to 98 emergency hospital admissions. This range of values reflects the uncertainty in the underlying England value.
+
+#### **Summary: NHSE NE&Y Approach**
+
+As an analytical team, we will scope out incorporating benchmarking charts in the style of the one below into our analysis. We will engage with stakeholders about the relative merits and demerits of charts in this format.
+
+For example, compared to the funnel plots previously shown this approach is much more likely to flag a value as being statistically significantly different from England. Whilst we may feel comfortable flagging a greater number of outliers in our analysis, this comes with an accompanying risk that we might 'set hares running' when the reasons for these differences aren't fully understood or haven't been accounted for in our analysis.
+
+![](images/Benchmarking%20Chart%202.png){fig-alt="Bar chart comparing CCG to England, showing significance"}
