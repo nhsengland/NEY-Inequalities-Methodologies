@@ -11,7 +11,7 @@ The Functions.R file contains all of the functions used to produce visualisation
 The QMD file is then used to create the final output. To reproduce the output, it will be necessary to also read in the shape files and images available as part of this repo. The output from the QMD file is also saved in this folder.
 
 # 'New' Slope Index of Inequality Function
-The 'new' Slope Index of Inequality (SII) function can be used to calculate 'new' SII values with accompanying simulated confidence intervals for any dataset broken down by deprivation. It is set up to calculate a value for a single geography/metric/time period, but can be used to calculate values for multiple combinations via a 'loop'. Worked examples of how to do this can be found in the DataWrangling file.
+The 'new' Slope Index of Inequality (SII) function can be used to calculate 'new' SII values with accompanying simulated confidence intervals for any dataset broken down by deprivation. It is set up to calculate a value for a single geography/metric/time period, but can be used to calculate values for multiple combinations via a loop. Worked examples of how to do this can be found in the DataWrangling file.
 
 # Contributing
 To contribute to this repo, please create a new branch and make a pull request with any changes in to the 'Dev' branch. 
