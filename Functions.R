@@ -67,7 +67,7 @@ Quintiles_old <- function(ICBname, DF) {
 
 ## Function Name: Quintiles_new_Sii
 
-## Overview: Function for calculating SII values using the 'new' methodology (deciles/quintiles locally defined)
+## Overview: Function for calculating SII values using the 'new' methodology (deciles/quintiles nationally defined)
 
 ## Arguments required:
 
@@ -76,7 +76,7 @@ Quintiles_old <- function(ICBname, DF) {
 # metric = Name of the metric you are analysing, which will appear in the MetricName_Col
 # date = a single time period within DF, which will appear in TimePeriodName_Col
 # Geog_Name = Name of the geography (e.g. ICB) you want to produce an output for
-# BiggerGeog = Name of the larger geography to base the spacing on (e.g. England)
+# BiggerGeog = Name of the larger geography to base the spacing of the quintiles on (e.g. England) based on the cumulative population in each
 
 # FLIP = Question of if we want to invert the quintiles - default is false. Purpose is to ensure that a positive SII/RII value always equates to inequalities disadvantaging the most deprived
 # reps = number of Confidence Interval simulations. Minimum to get CI output is 40.
@@ -92,11 +92,10 @@ Quintiles_old <- function(ICBname, DF) {
 
 ## Notes
 
-# The function filters out 'Persons' & 'Total' values in the IMD column (i.e. so just has IMD quintiles listed). If the 'total' IMD value is titled differently you'll need to use a different name
+# The function filters out 'Persons' & 'Total' values in the IMD column (i.e. so just has IMD quintiles listed, and not an overall value). If the overall IMD value is named differently you'll need to use a different name
 # If you want to get outputs for multiple metrics/geographies/time periods you'll need to embed the function within a loop. Examples of how to do this can be found in the DataWrangling.R file
 # If confidence intervals are not included in your underlying data, the phe_rate and phe_proportion functions as part of the PHEindicatormethods package can be used for this purpose.
-# To run the outputs from this function through the quadrant chart you'll need to add a region flag column. Examples of how to do this can be found in the DataWrangling.R file.
-
+# To run the outputs from this function through the quadrant chart visualisation you'll need to add a region flag column. Examples of how to do this can be found in the DataWrangling.R file.
 
 Quintiles_new_Sii <- function(DF, metric, date, Geog_Name, BiggerGeog, FLIP, reps,
                               AreaName_Col, MetricName_Col, IMD_Col, Population_Col, Value_Col, Lower_CI_Col, Upper_CI_Col, TimePeriodName_Col) {
@@ -206,14 +205,15 @@ Quintiles_new_Sii <- function(DF, metric, date, Geog_Name, BiggerGeog, FLIP, rep
 # IMD_Col = Name of the column with IMD information. 
 # Population_Col = Name of the population/denominator column
 # Value_Col = Name of the column with the value in
-# Lower_CI_Col - Name of the LowerCI column
-# Upper_CI_Col - Name of the LowerCI column 
+# Lower_CI_Col = Name of the LowerCI column
+# Upper_CI_Col = Name of the LowerCI column 
 # TimePeriodName_Col - Name of the column containing the time periods (the filter for 'date' above)
 
 ## Notes
 
-# For the function to work, the name of the most deprived, least deprived and overall values will need to be 1, 5 and "Persons" respectively
+# For the function to work, the name of the most deprived, least deprived and overall values will need to be 1, 5 and "Persons" respectively.
 # The function will produce an output for however many geographies included in the inputted dataframe. You'll therefore need to do any filtering before feeding data into the function.
+# Confidence intervals should be calculated at the 83.4% not the 95% level to align with the methodologies put forward by Goldstein and Healy (1995) - https://www.jstor.org/stable/2983411
 
 ICB_Dumbbells_new <- function(DF, date, 
                               Chart_title, Xaxis_title, Yaxis_title,
@@ -263,7 +263,7 @@ ICB_Dumbbells_new <- function(DF, date,
 
 ## Function Name: SiiTimeSeries_new
 
-## Overview: Function for producing a time series chart showing values for ICB values
+## Overview: Function for producing a time series chart showing values for ICBs over time
 
 ## Arguments required:
 
@@ -282,9 +282,9 @@ ICB_Dumbbells_new <- function(DF, date,
 
 ## Notes
 
-# The function is set up for England values to be labelled as "England". If a different name is used (e.g. "ENG") these will need to be renamed
+# The function is set up for England values to be labelled as "England". If a different name is used (e.g. "ENG") this will need renaming to "England"
 # It is also just set up for percentage values (e.g. % is prefixed on the ends of values)
-# The function is intended for producing an output with the 4 NEY ICBs in with the agreed team colours used. It will produce an output for additional geographies, but won't specify the colours for these.
+# The function is intended for producing an output with the 4 NEY ICBs in with the ICB colours agreed by the NE&Y analytics team applied. It will produce an output for additional geographies, but won't specify the colours for these.
 
 SiiTimeSeries_new <- function(DF, metric, 
                               Chart_title, Xaxis_title, Yaxis_title,
@@ -427,7 +427,6 @@ Regression_plot_new <- function(DF, metric, date, Geog_Name, midpoints,
   Quint <- DF %>%
     filter( {{AreaName_Col}} == Geog_Name, {{MetricName_Col}} == metric, {{IMD_Col}} != "Persons") %>%
     filter( {{TimePeriodName_Col}} == date )
-  # Quint$NewNum <- round(40 * Quint$Population_Col / max(Quint$Population_Col), digits = 0)
   MaxQpop <- Quint %>% select( {{Population_Col}} ) %>% max()
   Quint$NewNum <- Quint %>% select( {{Population_Col}} ) %>% pull()
   Quint$NewNum <- Quint$NewNum * 40 / MaxQpop
@@ -450,16 +449,9 @@ Regression_plot_new <- function(DF, metric, date, Geog_Name, midpoints,
     eqntext <- paste("y = ", round(midpoints[6], digits = 3), " - ", abs(round(midpoints[7], digits = 3)), " x")
   }
   
-  #  eqntext <- paste("y = ", round(midpoints[6], digits = 3), " + ", round(midpoints[7], digits = 3), " x")
-
   xaxisname <- ifelse(midpoints[10] == FALSE, "Deprivation quintile, most deprived to the left", 
                       "Deprivation quintile, most deprived to the right")
-  # if(midpoints[10] == FALSE){    # midpoints[10] is Value_Col of flip, from last call to quintiles_new()
-  #   xaxisname <- "Deprivation quintile, most deprived to the right"
-  # } else {
-  #   xaxisname <- "Deprivation quintile, most deprived to the left"
-  # }
-  
+
   TimePeriodName_Col <- enquo(TimePeriodName_Col)  
   MetricName_Col <- enquo(MetricName_Col)
   AreaName_Col <- enquo(AreaName_Col)
@@ -467,7 +459,6 @@ Regression_plot_new <- function(DF, metric, date, Geog_Name, midpoints,
   Population_Col <- enquo(Population_Col)
   Value_Col <- enquo(Value_Col)
   NewLow_Col = enquo(NewLow_Col)
-  # plot_ly(data = Quint , x = ~b, y = Value_Col, type = "scatter", mode = "markers")
 
   plot_ly(Quint , x = ~b) %>%
     add_trace(
@@ -476,18 +467,15 @@ Regression_plot_new <- function(DF, metric, date, Geog_Name, midpoints,
       hoverinfo = "text", 
       customdata = Population_Col,
       hovertemplate = paste(Geog_Name, "<br>", "Value: %{y:,.1f}<br>", "Total Patients: %{customdata}<br><extra></extra>") ,
-      # text = ~ paste(Geog_Name, " </br></br>",  # data$`AreaName_Col`, "</br></br>",
-      #   "Value_Col:", enquo(Value_Col), "</br>", "Total Patients:", enquo(Population_Col)    ,
       error_y = list(array = NewLow_Col, color = "#bcbcbc", width = 10)
     )  %>%
     add_trace(
-      #data = xy, x = ~x, y = ~y, name = "Regression Fit",
       x = c(0,1), y =  c(midpoints[6], midpoints[6] + midpoints[7]), name = "Regression Fit",
       type = "scatter", mode = "lines", alpha = 1
     ) %>%
     layout(
-      title = Chart_title, # title = "% CVD patients treated to threshold for cholesterol vs IMD Quintile",
-      xaxis = list(title = list(text = xaxisname)), #' "Deprivation quintile"')),
+      title = Chart_title,
+      xaxis = list(title = list(text = xaxisname)),
       yaxis = list(
         title = list(
           text = Yaxis_title,
@@ -499,12 +487,11 @@ Regression_plot_new <- function(DF, metric, date, Geog_Name, midpoints,
       legend = list(orientation = "h", x = 0.5, y = -0.2, xanchor = "center", hovermode = "x unified")
     ) %>%
     config(modeBarButtonsToRemove = c(
-      "zoomIn2d", "zoomOut2d", "select2d", "lasso2d", # "toImage",
+      "zoomIn2d", "zoomOut2d", "select2d", "lasso2d", 
       "pan2d", "autoScale2d", "zoom2d"
-    )) # ,"resetScale2d", "hoverClosestCartesian"))
+    )) 
   
-  
-}
+  }
 
 ## Function Name: QuadrantChart_new_labels
 
@@ -512,9 +499,14 @@ Regression_plot_new <- function(DF, metric, date, Geog_Name, midpoints,
 
 ## Arguments required:
 
-# DF = Full dataset with the overall values in. Should include all ICBs and England.
+# DF = Data frame with the overall values in. Should include all ICBs and England, with NE&Y ICBs containing both the most recent and historic values for comparison on the final output
 # Sii4allICB - Data frame containing all the latest SII values (Eng and ICB)
 # Sii4NEYICB - Data frame containing historic SII values (just for NEY ICBs)
+
+# date_early = Name of the date to show historic values for NEY ICBs
+# date_late = Latest date to show on the chart
+# IMD_Total_Name = Name given to overall values (will appear in the IMD_Col)
+# ENG Name = Name given to England in the dataset (will appear in the AreaName_Col)
 
 # Chart_title = Name to be given for the chart title
 # Xaxis_title = Name to be given for the x axis title
@@ -538,7 +530,8 @@ Regression_plot_new <- function(DF, metric, date, Geog_Name, midpoints,
 
 # This function needs to be used in combination with the Quintiles_new_Sii function to get the SII outputs. See the DataWrangling and QMD files for worked examples
 # The LowerCI column will need to be the difference between the Value and Lower CI (i.e. Value - LowerCI) not the LowerCI value by itself.
-# You'll need to make sure all 3 columns have the same column names (e.g. the AreaName_Col in all 3 has the same name as declared in the function) otherwise it won't work.
+# You'll need to make sure all 3 data frames have the same column names (e.g. the AreaName_Col in all 3 has the same name as declared in the function) otherwise it won't work.
+# The function assumes that the first data frame has a column in which breaks the values down by IMD Quintile, and then filters this on the overall value. If you're underlying data doesn't have an IMD column in, you'll need to add in an additional 'IMD' column.
 
 QuadrantChart_new_labels <- function(DF, Sii4allICB, Sii4NEYICB, metric, date_early, date_late, IMD_Total_Name, ENG_Name,
                                      Chart_title, Xaxis_title, Yaxis_title,
@@ -564,9 +557,7 @@ QuadrantChart_new_labels <- function(DF, Sii4allICB, Sii4NEYICB, metric, date_ea
   
   Sii4allICB_per <- merge(x = Sii4allICB, y = DF_BAR_Per, by = "Name") #, by.y = "AreaName_Col" )
   
-  #Sii4allICB_per$TPN <- date_late
   Sii4allICB_per <- Sii4allICB_per %>% 
-    #  relocate( TPN, .after = Name) %>% 
     filter(!!MetricName_Col == metric)
   
   DF_ALL_per <- DF %>%
@@ -580,7 +571,6 @@ QuadrantChart_new_labels <- function(DF, Sii4allICB, Sii4NEYICB, metric, date_ea
   
   QuadDF <- rbind(Sii4NEYICB_first, Sii4allICB_per)
   
-  # QuadDF$R_Flag <- paste(QuadDF$Region_Flag, QuadDF$TimePeriodName, sep = " ")
   QuadDF <- QuadDF %>%
     mutate(R_Flag := paste( {{Region_Flag_Col}}, {{TimePeriodName_Col}}, sep = " ") )
   England_Performance <- QuadDF %>%
@@ -591,13 +581,7 @@ QuadrantChart_new_labels <- function(DF, Sii4allICB, Sii4NEYICB, metric, date_ea
   eng_per <- England_Performance %>% select({{Value_Col}}) %>% pull()
   
   mycolors <- c("#AE2573", "#41B6E6", "#003087", "#ED8B00", "#AE2573", "#41B6E6", "#003087", "#ED8B00", "#cccccc")
-  # hnyT <- HNY_Name
-  # nencT <- NENC_Name
-  # syT <- SY_Name
-  # wyT <- WY_Name
-  # names(mycolors) <- c(paste(hnyT, date_late, sep = " "), paste(nencT, date_late, sep = " "), paste("Other", date_late, sep = " "), 
-  #                      paste(syT, date_late, sep = " "), paste(wyT, date_late, sep = " "), paste(hnyT, date_early, sep = " "), 
-  #                      paste(nencT, date_early, sep = " "), paste(syT, date_early, sep = " "), paste(wyT, date_early, sep = " "))
+
   col_names <- QuadDF %>% filter({{TimePeriodName_Col}} == date_late, Region_Flag != "Other") %>% select( Name )
   names(mycolors) <- c(paste(col_names$Name[1], date_late, sep = " "), paste(col_names$Name[2], date_late, sep = " "), paste(col_names$Name[3], date_late, sep = " "), 
                        paste(col_names$Name[4], date_late, sep = " "), paste(col_names$Name[1], date_early, sep = " "), paste(col_names$Name[2], date_early, sep = " "), 
@@ -625,14 +609,6 @@ QuadrantChart_new_labels <- function(DF, Sii4allICB, Sii4NEYICB, metric, date_ea
   MinY <- MinY1 - 0.1 * (MaxY1 - MinY1)
   MaxY <- MaxY1 + 0.1 * (MaxY1 - MinY1)
   
-  # if (abs(MinX) < abs(MaxX)) {
-  #   Ineq_text_LHS <- "Narrower Inequalities"
-  #   Ineq_text_RHS <- "Wider Inequalities"
-  # } else {
-  #   Ineq_text_RHS <- "Narrower Inequalities"
-  #   Ineq_text_LHS <- "Wider Inequalities"
-  # }
-  
   plot_ly(colors = mycolors) %>%
     add_trace(
       data = QuadDF %>% filter({{TimePeriodName_Col}} == date_late, {{Region_Flag_Col}} != "Other"),
@@ -642,10 +618,6 @@ QuadrantChart_new_labels <- function(DF, Sii4allICB, Sii4NEYICB, metric, date_ea
       hovertemplate = paste("%{customdata} <br>", "Date: ", date_late, "<br>",
                             "Metric: %{y}<br>", "Sii Value: %{x}<br><extra></extra>"),     #{x:,.1f}%
       
-      # hoverinfo = "text", text = ~ paste(
-      #   `Name`, "</br></br>", "Date: ", date_late, "</br>",
-      #   "Performance:", QuadDF$Value_Col, "</br>", "SII Value:", Sii
-      # ),
       error_x = list(array = ~lower, color = "#dcdcdc", width = 10),   #bcbcbc
       error_y = list(array = ~Lower_CI_Col, color = "#dcdcdc", width = 10)
     )  %>%
@@ -655,10 +627,7 @@ QuadrantChart_new_labels <- function(DF, Sii4allICB, Sii4NEYICB, metric, date_ea
       hoverinfo = "text", customdata = ~Name,
       hovertemplate = paste("%{customdata} <br>", "Date: ", date_late, "<br>",
                             "Metric: %{y}<br>", "Sii Value: %{x:,.1f}%<br><extra></extra>")
-      # hoverinfo = "text", text = ~ paste(
-      #   `Name`, "</br></br>", "Date: ", date_late, "</br>",
-      #   "Performance:", QuadDF$Value_Col, "</br>", "SII Value_Col :", Sii
-      # )  
+
     ) %>%
     add_trace(
       data = QuadDF %>% filter({{TimePeriodName_Col}} == date_early & !{{Region_Flag_Col}} == "Other"),
@@ -667,29 +636,22 @@ QuadrantChart_new_labels <- function(DF, Sii4allICB, Sii4NEYICB, metric, date_ea
       hoverinfo = "text", customdata = ~Name,
       hovertemplate = paste("%{customdata} <br>", "Date: ", date_early, "<br>",
                             "Metric: %{y}<br>", "Sii Value: %{x:,.1f}%<br><extra></extra>")
-      # hoverinfo = "text", text = ~ paste(
-      #   `Name`, "</br></br>", "Date: ", date_early, "</br>",
-      #   "Performance:", QuadDF$Value_Col, "</br>", "SII Value_Col :", Sii
-      # )
+
     ) %>%
     add_annotations(
       x = MinX, y = MinY, xanchor = "left", yanchor = "bottom",
-      # text = ~ paste("<b>", "Low Performance,", "</br></br>", Ineq_text_LHS), showarrow = F
       text = ~ paste("<b>", Bottom_Left), showarrow = F
     ) %>%
     add_annotations(
       x = MinX, y = MaxY, xanchor = "left", yanchor = "top",
-      # text = ~ paste("<b>", "High Performance,", "</br></br>", Ineq_text_LHS), showarrow = F
       text = ~ paste("<b>", Top_Left), showarrow = F
     ) %>%
     add_annotations(
       x = MaxX, y = MinY, xanchor = "right", yanchor = "bottom",
-      # text = ~ paste("<b>", "High Performance,", "</br></br>", Ineq_text_LHS), showarrow = F
       text = ~ paste("<b>", Bottom_Right), showarrow = F
     ) %>%
     add_annotations(
       x = MaxX, y = MaxY, xanchor = "right", yanchor = "top",
-      # text = ~ paste("<b>", "High Performance,", "</br></br>", Ineq_text_RHS), showarrow = F
       text = ~ paste("<b>",  Top_Right), showarrow = F
     ) %>%
     add_lines(
@@ -737,7 +699,7 @@ QuadrantChart_new_labels <- function(DF, Sii4allICB, Sii4NEYICB, metric, date_ea
 # Yaxis_title = Name to be given for the y axis title
 
 # AreaName_Col = Name of the column with geography names in (e.g. GP Practices)
-# Denominator_COl = Name of the column with denominators in
+# Denominator_Col = Name of the column with denominators in
 # Value_Col = Name of the column with values in
 # ICB_Col = Name of the column which shows ICB that AreaName_Col geographies map to
 # SubICB_Col = Name of the column which shows the sub-ICB locations that AreaName_Col geographies map to
@@ -929,7 +891,7 @@ SiiBar_new <- function(DF,
 
 # For the function to work, the name of the most deprived, least deprived and overall values will need to be 1, 5 and "Persons" respectively
 # The function will produce an output for however many geographies included in the inputted dataframe. You'll therefore need to do any filtering before feeding data into the function.
-# The function is just set up for percentage indicators, with wilsons CIs calculated. It is not set up for rates indicators, where the byars method will be more appropriate
+# The function is just set up for percentage indicators, with wilsons CIs calculated. It is not set up for rates indicators, where the byars method should be used to calculate CI values.
 
 ICB_Dumbbells_new_834 <- function(DF, date, 
                                   Chart_title, Xaxis_title, Yaxis_title,
@@ -982,7 +944,7 @@ ICB_Dumbbells_new_834 <- function(DF, date,
     add_markers(x = DbC_wide[[Valwide[2]]], y = DbC_wide[[AreaName_Col]], name = "Least", color = I("orange"), marker = list(symbol = ~flag), size = 8) %>%
     add_markers(x = DbC_wide[[Valwide[3]]], y = DbC_wide[[AreaName_Col]], name = "Total", color = I("grey"), size = 8) %>%
     layout(
-      title = Chart_title, # "% CVD Patients treated to threshold for cholesterol",
+      title = Chart_title, 
       xaxis = list(title = Xaxis_title, range = c(mindbc, maxdbc), ticksuffix = "%"),
       yaxis = list(title = Yaxis_title, categoryorder = "category descending"),
       margin = list(l = 65)
@@ -1017,7 +979,7 @@ ICB_Dumbbells_new_834 <- function(DF, date,
 
 ## Notes
 
-# Areas should be set up as a string in the following format for NEY. England needs to appear as the first name in it: c("England","Humber and North Yorkshire","North East and North Cumbria","South Yorkshire","West Yorkshire")
+# Areas should be declared as a string in the following format for NEY. England needs to appear as the first name in it: c("England","Humber and North Yorkshire","North East and North Cumbria","South Yorkshire","West Yorkshire")
 
 QuintileChart_4new <- function(DF, metric, Areas, Total_IMD_Name,
                                Chart_title, Xaxis_title, Yaxis_title,
@@ -1087,7 +1049,7 @@ QuintileChart_4new <- function(DF, metric, Areas, Total_IMD_Name,
   fig_all4
 }
 
-# Function which uses the FunnelPlotR function to create a funnek plot
+# Function which uses the FunnelPlotR function to create a funnel plot
 
 Funnel <- function(){
   
