@@ -77,13 +77,13 @@ This document has been split into the following sections:
 
 ### Applying Methodologies and Visualisations
 
-Whilst the primary purpose of this document is to provide an evidence base for approaches we will take as an analytical team, we have looked to enable other teams to apply these to their own work by making all of the underlying code available on [GitHub](https://github.com/NHS-NEY-Analytics/Inequalities-Methodologies).
+Whilst the primary purpose of this document is to provide an evidence base for approaches we will take as an analytical team, we have looked to enable other teams to apply these to their own work by making all of the underlying code available on [GitHub](https://github.com/nhsengland/NEY-Inequalities-Methodologies).
 
 The DataWrangling.R file reads in all the data used in this report and performs any data manipulation that's required. The Functions.R file contains the functions which are used for all the underlying calculations and visualisations. By downloading these along with the QMD file used to create the document itself, the user can replicate everything contained within here.
 
 Furthermore, it is possible to apply the functions (whether to calculate Slope Index of Inequality values or produce the different visualisations) to other datasets and pieces of work. For example, we are now using all of the functions as part of our [regional inequalities time series report](https://future.nhs.uk/neyanalytics/view?objectID=202025829).
 
-We are looking to provide additional guidance for applying the functions to other datasets and will look to share this as part of the underlying [GitHub repo](https://github.com/NHS-NEY-Analytics/Inequalities-Methodologies). For any questions please contact will.manners\@nhs.net.
+We are looking to provide additional guidance for applying the functions to other datasets and will look to share this as part of the underlying [GitHub repo](https://github.com/nhsengland/NEY-Inequalities-Methodologies). For any questions please contact will.manners\@nhs.net.
 
 ## 1. Introduction to Inequalities by Deprivation
 
@@ -452,7 +452,7 @@ Regression_plot_new(DATA, metrics[1], latest_date, ICB_Name, new,
 ```
 :::
 
-As an analytical team we have developed R code for calculating 'new' SII values and 95% confidence intervals, which is available as part of the [underlying GitHub repo](https://github.com/NHS-NEY-Analytics/Inequalities-Methodologies). The national Healthcare Inequalities Improvement Programme also has an Excel tool for calculating 'new' SII values, which can be requested directly from them.
+As an analytical team we have developed R code for calculating 'new' SII values and 95% confidence intervals, which is available as part of the [underlying GitHub repo](https://github.com/nhsengland/NEY-Inequalities-Methodologies). The national Healthcare Inequalities Improvement Programme also has an Excel tool for calculating 'new' SII values, which can be requested directly from them.
 
 #### Key Considerations
 
@@ -834,7 +834,7 @@ Whilst we currently do not have capacity to develop the above chart to reflect t
 
 -   We will also include time series charts as standard to show whether inequalities are narrowing or widening over time, along with accompanying narrative to help end users interpret changes in time series data.
 
--   All of the R code used to produce these charts is available in the functions folder within the underlying [GitHub repository](https://github.com/NHS-NEY-Analytics/Inequalities-Methodologies). Code for producing the automated narrative can be found in the Quarto file.
+-   All of the R code used to produce these charts is available in the functions folder within the underlying [GitHub repository](https://github.com/nhsengland/NEY-Inequalities-Methodologies). Code for producing the automated narrative can be found in the Quarto file.
 :::
 
 ### 4a. Regression Visualisation
@@ -908,7 +908,7 @@ cat("This figure represents the social gradient from most to least deprived for 
 
 cat("For each deprivation decile or quintile, the vertical grey bars represent 95% confidence intervals. These represent the uncertainity in the underlying values. Smaller populations, which are more likely to have their values influenced by random variation, will have wider confidence intervals. The uncertainity in each of these data points will the inform the confidence intervals calculated for the overall SII or RII value. \n \n")
 
-cat("For further information on Slope Index of Inequality values and why we have chosen to use this methodology for analysing inequalities, please see the [methodology document](https://github.com/NHS-NEY-Analytics/Inequalities-Methodologies) produced by the North East and Yorkshire analytics team. \n \n")
+cat("For further information on Slope Index of Inequality values and why we have chosen to use this methodology for analysing inequalities, please see the [methodology document](https://github.com/nhsengland/NEY-Inequalities-Methodologies) produced by the North East and Yorkshire analytics team. \n \n")
 
 # Produce outputted regression plot
 Regression_plot_new(DATA, metrics[1], latest_date, ICB_Name, new,
@@ -961,7 +961,7 @@ cat("The SII approximates the gap between most and least deprived. For example, 
 
 cat("For each geography, the vertical grey lines represent 95% confidence intervals. These show us the uncertainity in the SII values. The size of the confidence intervals should be considered before drawing conclusions from the data. For example, if they cross the 0% line on the chart, then we cannot say with statistical certainity that more or less deprived areas have higher values for the metric. \n \n")
 
-cat("For further information on Slope Index of Inequality values and why we have chosen to use this methodology for analysing inequalities, please see the [methodology document](https://github.com/NHS-NEY-Analytics/Inequalities-Methodologies) produced by the North East and Yorkshire analytics team. \n \n")
+cat("For further information on Slope Index of Inequality values and why we have chosen to use this methodology for analysing inequalities, please see the [methodology document](https://github.com/nhsengland/NEY-Inequalities-Methodologies) produced by the North East and Yorkshire analytics team. \n \n")
 
 # Remove England data so it's not plotted as a line in the bar chart
 XAllICB_Sii <- AllICB_Sii %>% filter(AreaName != "England") 
@@ -1044,7 +1044,7 @@ In cases where ICBs have <strong>negative</strong> SII values on the chart, this
 
 cat("For the most recent time period, <strong>", Sii_max$AreaName, "</strong> has the widest gap between most and least deprived, with an SII value of <strong>", paste0(round(Sii_max$Sii, digits = 1), "%."), Sii_min$AreaName, "</strong> has the smallest gap between most and least deprived, with an SII value of <strong>", paste0(round(Sii_min$Sii, digits = 1), "%."), "</strong> \n \n")
 
-cat("For further information on Slope Index of Inequality values and why we have chosen to use this methodology for analysing inequalities, please see the [methodology document](https://github.com/NHS-NEY-Analytics/Inequalities-Methodologies) produced by the North East and Yorkshire analytics team. \n \n")
+cat("For further information on Slope Index of Inequality values and why we have chosen to use this methodology for analysing inequalities, please see the [methodology document](https://github.com/nhsengland/NEY-Inequalities-Methodologies) produced by the North East and Yorkshire analytics team. \n \n")
 
 #  Produce outputted chart using the SiiTimeSeries_new function
 SiiTimeSeries_new(ICB_Sii, metrics[1],
