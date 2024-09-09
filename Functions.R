@@ -7,7 +7,6 @@
 # DF = Name of the data frame you're running through the function
 # NamesColumn = Name of the column with the geography names in
 
-
 NameWrangle <- function(DF, NamesColumn){
   DF %>% 
     mutate( {{NamesColumn}} := str_replace( {{NamesColumn}}, " Nhs Trust", "") ) %>%
@@ -67,7 +66,7 @@ Quintiles_old <- function(ICBname, DF) {
 
 ## Function Name: Quintiles_new_Sii
 
-## Overview: Function for calculating SII values using the 'new' methodology (deciles/quintiles nationally defined)
+## Overview: Function for calculating SII values using the 'new' methodology (deciles/quintiles nationally defined) with bootstrapping confidence intervals
 
 ## Arguments required:
 
@@ -189,7 +188,7 @@ Quintiles_new_Sii <- function(DF, metric, date, Geog_Name, BiggerGeog, FLIP, rep
 
 ## Function Name: ICB_Dumbbells_new
 
-## Overview: Function for producing dumbbell charts with 83.4% CIs already calculated
+## Overview: Function for producing dumbbell charts where 83.4% CIs are already calculated in the underlying data.
 
 ## Arguments required:
 
@@ -263,7 +262,7 @@ ICB_Dumbbells_new <- function(DF, date,
 
 ## Function Name: SiiTimeSeries_new
 
-## Overview: Function for producing a time series chart showing values for ICBs over time
+## Overview: Function for producing a time series chart showing changes in ICB values over time
 
 ## Arguments required:
 
@@ -402,7 +401,7 @@ QuintileChart_new <- function(DF, Geog_Name,
 # metric = Name of the metric you are analysing (will appear in the MetricName_Col)
 # date = Name of the date you're analysing the metric for (will appear in the TimePeriodName_Col)
 # Geog_Name = Name of the geography you are producing an output for (will appear in the AreaName_Col)
-# midpoints = Will be declared as part of the Quintiles_new_Sii function. For examples of how to use the two in combination see the QMD output file.
+# midpoints = Will be calculated as part of the Quintiles_new_Sii function. For examples of how to declare the outputs from the Quintiles_new_Sii as the 'midpoint' variable see the QMD output file.
 
 # Chart_title = Name to be given for the chart title
 # Yaxis_title = Name to be given for the y axis title
@@ -504,7 +503,7 @@ Regression_plot_new <- function(DF, metric, date, Geog_Name, midpoints,
 # Sii4NEYICB - Data frame containing historic SII values (just for NEY ICBs)
 
 # date_early = Name of the date to show historic values for NEY ICBs
-# date_late = Latest date to show on the chart
+# date_late = Latest date to show values for on the chart
 # IMD_Total_Name = Name given to overall values (will appear in the IMD_Col)
 # ENG Name = Name given to England in the dataset (will appear in the AreaName_Col)
 
@@ -530,8 +529,8 @@ Regression_plot_new <- function(DF, metric, date, Geog_Name, midpoints,
 
 # This function needs to be used in combination with the Quintiles_new_Sii function to get the SII outputs. See the DataWrangling and QMD files for worked examples
 # The LowerCI column will need to be the difference between the Value and Lower CI (i.e. Value - LowerCI) not the LowerCI value by itself.
-# You'll need to make sure all 3 data frames have the same column names (e.g. the AreaName_Col in all 3 has the same name as declared in the function) otherwise it won't work.
-# The function assumes that the first data frame has a column in which breaks the values down by IMD Quintile, and then filters this on the overall value. If you're underlying data doesn't have an IMD column in, you'll need to add in an additional 'IMD' column.
+# You'll need to make sure all 3 data frames have the exact same column names (e.g. the AreaName_Col in all 3 has the same name as declared in the function) otherwise it won't work.
+# The function assumes that the first data frame has a column which breaks the values down by IMD Quintile, and then filters this on the overall value. If you're underlying data doesn't have an IMD column in, you'll need to add this in.
 
 QuadrantChart_new_labels <- function(DF, Sii4allICB, Sii4NEYICB, metric, date_early, date_late, IMD_Total_Name, ENG_Name,
                                      Chart_title, Xaxis_title, Yaxis_title,
@@ -890,8 +889,8 @@ SiiBar_new <- function(DF,
 ## Notes
 
 # For the function to work, the name of the most deprived, least deprived and overall values will need to be 1, 5 and "Persons" respectively
-# The function will produce an output for however many geographies included in the inputted dataframe. You'll therefore need to do any filtering before feeding data into the function.
-# The function is just set up for percentage indicators, with wilsons CIs calculated. It is not set up for rates indicators, where the byars method should be used to calculate CI values.
+# The function will produce an output for however many geographies included in the inputted dataframe. You'll therefore need to do any filtering on the required output before feeding data into the function.
+# The function is just set up for percentage indicators, with Wilson CIs calculated. It is not set up for rates indicators, where the Byars method should be used to calculate CI values.
 
 ICB_Dumbbells_new_834 <- function(DF, date, 
                                   Chart_title, Xaxis_title, Yaxis_title,
