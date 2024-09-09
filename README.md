@@ -14,7 +14,7 @@ The QMD file is then used to create the final output. To reproduce the output, i
 The 'new' Slope Index of Inequality (SII) function can be used to calculate 'new' SII values with accompanying simulated confidence intervals for any dataset broken down by deprivation. It is set up to calculate a value for a single geography/metric/time period, but can be used to calculate values for multiple combinations via a loop. Worked examples of how to do this can be found in the DataWrangling file.
 
 # Contributing
-To contribute to this repo, please create a new branch and make a pull request with any changes in to the 'Dev' branch. 
+To contribute to this repo, please create a new branch and make a pull request with any changes in to the 'Dev' branch (i.e. please don't commit any changes to Main). 
 
 # Contact
 For any questions about the contents of the repo, please contact will.manners@nhs.net.
